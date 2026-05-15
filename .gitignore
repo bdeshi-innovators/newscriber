@@ -1,0 +1,8 @@
+/_data/
+/.firecrawl/
+.env
+*.exe
+*.test
+*.out
+.idea/
+.vscode/

@@ -1,0 +1,81 @@
+name: voicescribe
+
+networks:
+  default:
+    name: voicescribe-net
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: voicescribe-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-voicescribe}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-voicescribe}
+      POSTGRES_DB: ${POSTGRES_DB:-voicescribe}
+    volumes:
+      - ./_data/postgres:/var/lib/postgresql/data
+    ports:
+      - "${DB_HOST_PORT:-55432}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-voicescribe} -d ${POSTGRES_DB:-voicescribe}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  webhook-app:
+    build: .
+    image: voicescribe-webhook:${IMAGE_TAG:-latest}
+    container_name: voicescribe-webhook
+    restart: unless-stopped
+    # Inject every key from .env at container runtime (gitignored, chmod 600).
+    # `environment:` below overrides any same-named keys from .env.
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      DATABASE_URL: postgres://${POSTGRES_USER:-voicescribe}:${POSTGRES_PASSWORD:-voicescribe}@db:5432/${POSTGRES_DB:-voicescribe}?sslmode=disable
+      PORT: "8080"
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-json}
+    ports:
+      - "${WEBHOOK_HOST_PORT:-18080}:8080"
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "/app/webhook", "-healthcheck"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+      start_period: 5s
+    read_only: true
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+
+  n8n:
+    image: n8nio/n8n
+    container_name: voicescribe-n8n
+    restart: unless-stopped
+    user: "1000:1000"
+    env_file:
+      - path: .env
+        required: false
+    environment:
+      # Current n8n uses the owner-account flow (visit /setup on first run)
+      # rather than basic auth. For production exposure, either complete the
+      # owner setup AND bind to 127.0.0.1 below, or front with a reverse proxy.
+      N8N_HOST: ${N8N_HOST:-localhost}
+      N8N_PORT: 5678
+      N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
+      WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:15678/}
+      GENERIC_TIMEZONE: ${TZ:-UTC}
+      N8N_RUNNERS_ENABLED: "true"
+      N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
+      NODE_FUNCTION_ALLOW_BUILTIN: "crypto"
+    ports:
+      - "${N8N_HOST_PORT:-15678}:5678"
+    volumes:
+      - ./_data/n8n:/home/node/.n8n

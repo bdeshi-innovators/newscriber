@@ -1,0 +1,33 @@
+────────────────────────────────────────
+ Calling: https://devel-mnww3344-eastus2.openai.azure.com/openai/deployments/Kimi-K2.5/chat/completions?api-version=2024-12-01-preview
+────────────────────────────────────────
+{
+    "id": "e29b3f7ec22743dfbab78777d492dace",
+    "model": "Kimi-K2.5",
+    "choices": [
+        {
+            "index": 0,
+            "message": {
+                "role": "assistant",
+                "content": "",
+                "reasoning_content": "The user wants me to say hello and tell them which model I am in one sentence. I need to combine both requirements into a single sentence.\n\nRequirements:\n1. Say hello (greeting)\n2. Identify which model I am\n3. Do this in exactly one sentence\n\nI am Kimi, an AI assistant developed by Moonshot AI.\n\nPossible phrasing:\n- \"Hello, I am Kimi, an AI assistant developed by Moonshot AI.\"\n- \"Hello! I'm Kimi, a large language model created by Moonshot AI.\"\n- \"Hello, I'm Kimi, an AI language model trained by Moonshot AI.\"\n\n"
+            },
+            "finish_reason": "length",
+            "content_filter_results": {}
+        }
+    ],
+    "usage": {
+        "prompt_tokens": 31,
+        "completion_tokens": 128,
+        "total_tokens": 159,
+        "audio_prompt_tokens": 0,
+        "prompt_tokens_details": {
+            "cached_tokens": 4
+        }
+    },
+    "created": 1778743678,
+    "object": "chat.completion",
+    "prompt_filter_results": null
+}
+
+Done.

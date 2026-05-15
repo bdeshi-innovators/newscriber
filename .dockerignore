@@ -1,0 +1,10 @@
+_data/
+.env
+.git/
+.gitignore
+*.md
+.idea/
+.vscode/
+.dockerignore
+docker-compose.yml
+Dockerfile

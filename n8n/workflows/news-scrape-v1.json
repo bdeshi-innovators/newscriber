@@ -1,0 +1,187 @@
+{
+  "name": "VoiceScribe — News Scrape V1 (Firecrawl)",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "trig-manual",
+      "name": "Manual Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [-400, 100]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "trig-cron",
+      "name": "Every 2h",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [-400, 320]
+    },
+    {
+      "parameters": {
+        "jsCode": "// V1 source list — replace this node with a Google Sheets \"Get Rows\" node\n// once the business-team sheet is wired (columns: enabled, name, url, language, topics).\n// Each item below becomes one branch downstream.\nreturn [\n  {\n    json: {\n      enabled: true,\n      name: 'BBC News',\n      url: 'https://www.bbc.com/news',\n      language: 'en',\n      // regex matched against discovered links — keeps only real article URLs\n      article_url_pattern: '^https://www\\\\.bbc\\\\.com/news/articles/[a-z0-9]+$',\n      topics: ['breaking']\n    }\n  },\n  {\n    json: {\n      enabled: true,\n      name: 'Al Jazeera',\n      url: 'https://www.aljazeera.com/news/',\n      language: 'en',\n      article_url_pattern: '^https://www\\\\.aljazeera\\\\.com/news/\\\\d{4}/\\\\d{1,2}/\\\\d{1,2}/[a-z0-9-]+$',\n      topics: ['breaking']\n    }\n  }\n].filter(i => i.json.enabled);"
+      },
+      "id": "src-list",
+      "name": "Source list (replace with Google Sheets)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [-160, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v2/scrape",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{$json.url}}\",\n  \"formats\": [\"markdown\", \"links\"],\n  \"onlyMainContent\": true\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 60000
+        }
+      },
+      "id": "fc-index",
+      "name": "Firecrawl: scrape index",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [80, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIRECRAWL_CRED",
+          "name": "Firecrawl Bearer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// For each source: keep only links matching its article_url_pattern,\n// dedupe, cap at 10 article URLs to keep call volume sane for V1.\nconst out = [];\nfor (const item of $input.all()) {\n  const links = item.json?.data?.links || [];\n  const src = item.json; // includes our merged source row from the previous node? No — http response loses it.\n  // Recover source context from the paired-item input:\n  const source = $('Source list (replace with Google Sheets)').itemMatching(item.pairedItem.item).json;\n  const re = new RegExp(source.article_url_pattern);\n  const seen = new Set();\n  for (const u of links) {\n    if (re.test(u) && !seen.has(u)) {\n      seen.add(u);\n      out.push({\n        json: {\n          source_name: source.name,\n          source_url: source.url,\n          language: source.language,\n          topics: source.topics,\n          article_url: u\n        }\n      });\n      if (seen.size >= 10) break;\n    }\n  }\n}\nreturn out;"
+      },
+      "id": "filter-urls",
+      "name": "Filter article URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [320, 200]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "batch",
+      "name": "Per article",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [540, 200]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.firecrawl.dev/v2/scrape",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"url\": \"{{$json.article_url}}\",\n  \"formats\": [{\n    \"type\": \"json\",\n    \"prompt\": \"Extract this news article for a 60-second audio bulletin. Return fields: headline (<=90 chars, plain text, no quotes/emojis), dek (1 sentence, 25 words max, plain text), body (3-5 sentences, 80-100 words, plain spoken prose suitable for TTS — no URLs, no markdown, no bracketed citations, expand abbreviations like 'U.S.' to 'United States'), published_date (ISO date if available else null), source (publisher name).\"\n  }],\n  \"onlyMainContent\": true\n}",
+        "options": {
+          "response": {
+            "response": {
+              "neverError": false,
+              "responseFormat": "json"
+            }
+          },
+          "timeout": 90000
+        }
+      },
+      "id": "fc-extract",
+      "name": "Firecrawl: extract article",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [780, 200],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "FIRECRAWL_CRED",
+          "name": "Firecrawl Bearer"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Shape the Firecrawl response into a flat row ready for TTS / dedupe / broadcast.\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json?.data?.json || {};\n  const ctx = $('Per article').itemMatching(item.pairedItem.item).json;\n  if (!j.headline || !j.body) continue; // skip failures\n  out.push({\n    json: {\n      source_name: ctx.source_name,\n      source_url: ctx.source_url,\n      article_url: ctx.article_url,\n      language: ctx.language,\n      topics: ctx.topics,\n      headline: j.headline,\n      dek: j.dek || null,\n      body: j.body,\n      published_date: j.published_date || null,\n      // hash for idempotency in the deliveries table later\n      fingerprint: require('crypto').createHash('sha256').update(ctx.article_url).digest('hex').slice(0, 16),\n      scraped_at: new Date().toISOString()\n    }\n  });\n}\nreturn out;"
+      },
+      "id": "shape",
+      "name": "Shape for TTS",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1020, 200]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO news_items (fingerprint, source_name, article_url, language, headline, dek, body, published_date, topics, scraped_at)\nVALUES ('{{$json.fingerprint}}', $1, $2, $3, $4, $5, $6, $7, $8, $9)\nON CONFLICT (fingerprint) DO NOTHING\nRETURNING id;",
+        "additionalFields": {
+          "queryParams": "={{$json.source_name}},={{$json.article_url}},={{$json.language}},={{$json.headline}},={{$json.dek}},={{$json.body}},={{$json.published_date}},={{$json.topics}},={{$json.scraped_at}}"
+        }
+      },
+      "id": "pg-insert",
+      "name": "Postgres: dedupe insert (optional)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [1260, 200],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      },
+      "disabled": true,
+      "notes": "Enable after creating news_items table (see n8n/README.md)."
+    }
+  ],
+  "connections": {
+    "Manual Run": {
+      "main": [[{"node": "Source list (replace with Google Sheets)", "type": "main", "index": 0}]]
+    },
+    "Every 2h": {
+      "main": [[{"node": "Source list (replace with Google Sheets)", "type": "main", "index": 0}]]
+    },
+    "Source list (replace with Google Sheets)": {
+      "main": [[{"node": "Firecrawl: scrape index", "type": "main", "index": 0}]]
+    },
+    "Firecrawl: scrape index": {
+      "main": [[{"node": "Filter article URLs", "type": "main", "index": 0}]]
+    },
+    "Filter article URLs": {
+      "main": [[{"node": "Per article", "type": "main", "index": 0}]]
+    },
+    "Per article": {
+      "main": [[{"node": "Firecrawl: extract article", "type": "main", "index": 0}]]
+    },
+    "Firecrawl: extract article": {
+      "main": [[{"node": "Shape for TTS", "type": "main", "index": 0}]]
+    },
+    "Shape for TTS": {
+      "main": [[{"node": "Postgres: dedupe insert (optional)", "type": "main", "index": 0}]]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  }
+}
