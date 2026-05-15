@@ -15,8 +15,8 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-voicescribe}
     volumes:
       - ./_data/postgres:/var/lib/postgresql/data
-    ports:
-      - "${DB_HOST_PORT:-55432}:5432"
+    # ports:
+    #   - "${DB_HOST_PORT:-55432}:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-voicescribe} -d ${POSTGRES_DB:-voicescribe}"]
       interval: 5s
@@ -38,8 +38,8 @@ services:
       PORT: "8080"
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FORMAT: ${LOG_FORMAT:-json}
-    ports:
-      - "${WEBHOOK_HOST_PORT:-18080}:8080"
+    # ports:
+    #   - "${WEBHOOK_HOST_PORT:-18080}:8080"
     depends_on:
       db:
         condition: service_healthy
@@ -72,10 +72,30 @@ services:
       N8N_PROTOCOL: ${N8N_PROTOCOL:-http}
       WEBHOOK_URL: ${N8N_WEBHOOK_URL:-http://localhost:15678/}
       GENERIC_TIMEZONE: ${TZ:-UTC}
-      N8N_RUNNERS_ENABLED: "true"
       N8N_BLOCK_ENV_ACCESS_IN_NODE: "false"
       NODE_FUNCTION_ALLOW_BUILTIN: "crypto"
-    ports:
-      - "${N8N_HOST_PORT:-15678}:5678"
+    # ports:
+    #   - "${N8N_HOST_PORT:-15678}:5678"
+    entrypoint: /scripts/n8n-init.sh
     volumes:
       - ./_data/n8n:/home/node/.n8n
+      - ./n8n/workflows:/workflows:ro
+      - ./scripts:/scripts:ro
+
+  caddy:
+    image: caddy:latest
+    container_name: voicescribe-proxy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - n8n
+      - webhook-app
+
+volumes:
+  caddy_data:
+  caddy_config:
