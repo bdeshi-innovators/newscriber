@@ -206,45 +206,33 @@ curl -X POST http://localhost:18080/webhook/whatsapp \
 
 Reply is JSON: `{"reply":"You're set! ..."}`.
 
-## Production setup
+## Cloud Deployment
 
-This compose stack is built to be promoted to a production-like deployment
-with **only configuration changes** — no code changes. The hardening already in
-place:
+The system is deployed to a remote GCP instance using a reverse proxy (Caddy) for unified access on port 80.
 
-| Concern                  | What's in place                                                                                           |
-| ------------------------ | --------------------------------------------------------------------------------------------------------- |
-| Secrets out of source    | `${VAR:-default}` interpolation throughout `docker-compose.yml`. Override via a `.env` file (gitignored). |
-| Container restart        | `restart: unless-stopped` on every service.                                                               |
-| DB readiness gate        | `db` has a `pg_isready` healthcheck; `webhook-app` waits for `service_healthy` before starting.           |
-| App healthcheck          | Webhook binary supports `-healthcheck`; container healthcheck uses it (no need to bundle `curl`).         |
-| Container hardening      | `webhook-app` runs `read_only: true`, `cap_drop: ALL`, `no-new-privileges`, `USER nobody`.                |
-| Structured logging       | Go service uses `log/slog` (JSON by default). Tunable via `LOG_LEVEL` / `LOG_FORMAT`.                     |
-| Request observability    | All HTTP requests logged with method/path/status/duration.                                                |
-| DB pool tuning           | `SetMaxOpenConns=25`, `SetMaxIdleConns=5`, `SetConnMaxLifetime=5m`, `SetConnMaxIdleTime=2m`.              |
-| Image size               | Multi-stage build, CGO off, alpine runner — final image is small.                                         |
+### Deployment Workflow
+The deployment is automated via the `Makefile`. Running `make deploy` locally performs the following:
+1. **File Synchronization**: Uses `rsync` to push source code, configuration files (`Caddyfile`, `docker-compose.yml`), and scripts to the remote server, excluding local data (`_data/`) and secrets.
+2. **Environment Patching**: Generates a temporary `.env` file for the remote server by replacing `localhost` references with the remote's public IP address.
+3. **Remote Orchestration**: Triggers `docker compose up -d --build` on the remote server via SSH to rebuild the webhook app and restart services.
 
-### Deploying for real — the playbook
+### Infrastructure Structure
+- **Caddy (Port 80)**: Acts as the entry point. It routes traffic based on the URL path:
+  - `http://<IP>/` → Proxies to **n8n** internal port 5678.
+  - `http://<IP>/api/webhook/*` → Proxies to **Webhook App** internal port 8080.
+- **n8n**: The workflow engine, pre-configured via `scripts/n8n-init.sh` to import credentials and workflows on startup.
+- **Webhook App**: The Go service that handles WhatsApp interactions.
+- **Postgres**: The database, isolated from direct public access.
 
-1. **Copy `.env.example` → `.env`** and set strong values for
-   `POSTGRES_PASSWORD` (the example default is a placeholder).
-2. **Front the webhook with TLS.** WhatsApp/Twilio require HTTPS. In V1
-   the Go service speaks plain HTTP; in production terminate TLS at a
-   reverse proxy (Caddy / Traefik / nginx / cloud LB) pointing at
-   `webhook-app:8080`.
-3. **Restrict the n8n and Postgres host ports.** Edit the `ports:` lines
-   to bind to `127.0.0.1` so they're not reachable from the LAN:
-   ```yaml
-   ports:
-     - "127.0.0.1:55432:5432"   # db
-     - "127.0.0.1:15678:5678"   # n8n
-   ```
-4. **Complete the n8n owner-account setup.** Hit
-   `http://localhost:15678/setup` on first launch and create the owner
-   account. Current n8n versions deprecated `N8N_BASIC_AUTH_*` in favor of
-   this flow.
-5. **Back up `./_data/postgres`** (the bind-mount holds all DB state).
-6. **Plan signature verification** for the webhook (see follow-ups below).
+### FAQ
+**Is Docker being used correctly?**
+Yes. Docker provides a consistent environment across local development and cloud production. By using a private network (`voicescribe-net`), we ensure that internal services (DB, n8n, Webhook) are not exposed directly to the internet, forcing all traffic through the Caddy proxy for better security and routing.
+
+**How is the public address navigated?**
+Caddy handles "Path Routing". When you visit the IP, Caddy checks the path. If it starts with `/api/webhook/`, it sends it to the Go app. Everything else goes to the n8n UI. This allows multiple services to share a single public IP and port.
+
+**Why no HTTPS right now?**
+We are currently using a raw Public IP for the prototype. SSL certificates (via Let's Encrypt) require a registered domain name (e.g., `api.voicescribe.com`). Once a domain is pointed to the IP, Caddy can be configured to enable HTTPS automatically with a single line change in the `Caddyfile`.
 
 ## Roadmap — what's left to reach the full goal
 
