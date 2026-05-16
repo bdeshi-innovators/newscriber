@@ -5,12 +5,21 @@ This slice is the **interactive onboarding webhook**: receive WhatsApp inbound
 messages, register the user in Postgres, let them pick a language
 (English / Italian / Bangla), and acknowledge with a placeholder audio drop.
 
-## Stack
+## Stack & Technologies
 
-- Go service (`cmd/webhook`) — `net/http` + `database/sql`
-- Postgres 15 — via `github.com/jackc/pgx/v5/stdlib`
-- n8n — for downstream automation
-- All orchestrated by Docker Compose under the project name `voicescribe`
+The system is built on a modern, containerized stack designed for reliability and ease of automation.
+
+### Core Services
+- **[Go](https://go.dev/)**: The core language used for the `webhook-app`. It provides high-performance, concurrent handling of WhatsApp interactions.
+- **[PostgreSQL](https://www.postgresql.org/)**: A robust relational database for persisting user profiles, language preferences, and news items.
+- **[n8n](https://n8n.io/)**: A powerful low-code workflow automation tool used for orchestrating the news ingestion, summarization, and audio generation pipeline.
+- **[Caddy](https://caddyserver.com/)**: A modern web server and reverse proxy that handles traffic routing and will provide automatic HTTPS once a domain is attached.
+
+### Infrastructure & Tooling
+- **[Docker](https://www.docker.com/) & [Compose](https://docs.docker.com/compose/)**: Orchestrates the entire stack, ensuring consistent environments between local development and cloud production.
+- **[GCP (Google Cloud Platform)](https://cloud.google.com/)**: Hosts the remote virtual machine for the production deployment.
+- **[Firecrawl](https://www.firecrawl.dev/)**: Used within n8n workflows for advanced web scraping and article extraction.
+- **[rsync](https://rsync.samba.org/)**: Powering the `make deploy` workflow for efficient file synchronization to the remote server.
 
 ## System architecture
 
