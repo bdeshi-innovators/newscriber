@@ -1,5 +1,5 @@
 {
-  "name": "VoiceScribe \u2014 News Pipeline V4 (Resilient)",
+  "name": "VoiceScribe — News Pipeline V4 (Resilient + Multi-Lang)",
   "nodes": [
     {
       "parameters": {},
@@ -25,8 +25,8 @@
       },
       "id": "trig-cron-3x",
       "name": "07:00, 13:00, 19:00",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "typeVersion": 1.2,
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
       "position": [
         -400,
         300
@@ -34,14 +34,14 @@
     },
     {
       "parameters": {
-        "jsCode": "return [\n  {\n    json: {\n      enabled: true,\n      name: 'BBC News',\n      url: 'https://www.bbc.com/news',\n      language: 'en',\n      article_url_pattern: '^https://www\\\\.bbc\\\\.com/news/articles/[a-z0-9]+$',\n      topics: ['breaking']\n    }\n  },\n  {\n    json: {\n      enabled: true,\n      name: 'Al Jazeera',\n      url: 'https://www.aljazeera.com/news/',\n      language: 'en',\n      article_url_pattern: '^https://www\\\\.aljazeera\\\\.com/news/\\\\d{4}/\\\\d{1,2}/\\\\d{1,2}/[a-z0-9-]+$',\n      topics: ['breaking']\n    }\n  }\n].filter(i => i.json.enabled);"
+        "jsCode": "return [\n  { json: { url: 'https://techcrunch.com', source: 'TechCrunch' } },\n  { json: { url: 'https://venturebeat.com', source: 'VentureBeat' } },\n  { json: { url: 'https://www.technologyreview.com', source: 'MIT Tech Review' } }\n];"
       },
       "id": "src-list",
       "name": "Source list",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        -160,
+        -200,
         200
       ]
     },
@@ -53,75 +53,34 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"url\": \"{{$json.url}}\",\n  \"formats\": [\"markdown\", \"links\"],\n  \"onlyMainContent\": true\n}",
-        "options": {
-          "response": {
-            "response": {
-              "neverError": false,
-              "responseFormat": "json"
-            }
-          }
-        }
+        "jsonBody": "={\n  \"url\": \"{{ $json.url }}\",\n  \"formats\": [\"markdown\", \"links\"],\n  \"onlyMainContent\": true\n}",
+        "options": {}
       },
       "id": "fc-index",
       "name": "Firecrawl: scrape index",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        80,
+        0,
         200
       ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "FIRECRAWL_CRED",
-          "name": "Firecrawl Bearer"
+          "name": "Firecrawl API Key"
         }
       }
     },
     {
       "parameters": {
-        "jsCode": "const crypto = require('crypto');\nconst fp = u => crypto.createHash('sha256').update(u).digest('hex').slice(0, 16);\nconst out = [];\nfor (const item of $input.all()) {\n  const links = item.json?.data?.links || [];\n  const source = $('Source list').itemMatching(item.pairedItem.item).json;\n  const re = new RegExp(source.article_url_pattern);\n  const seen = new Set();\n  for (const u of links) {\n    if (re.test(u) && !seen.has(u)) {\n      seen.add(u);\n      out.push({\n        json: {\n          source_name: source.name,\n          source_url: source.url,\n          language: source.language,\n          topics: source.topics,\n          article_url: u,\n          fingerprint: fp(u)\n        }\n      });\n      if (seen.size >= 5) break;\n    }\n  }\n}\nreturn out;"
+        "jsCode": "const data = $input.first().json;\nconst source = $('Source list').first().json.source;\nconst links = (data.data && data.data.links) ? data.data.links : [];\nconst MAX_ARTICLES = 25;\n\nconst hash = (s) => {\n  let h = 0x811c9dc5;\n  for (let i = 0; i < s.length; i++) {\n    h ^= s.charCodeAt(i);\n    h = Math.imul(h, 0x01000193);\n  }\n  return (h >>> 0).toString(16);\n};\n\nreturn links.slice(0, MAX_ARTICLES).map(url => ({\n  json: { url, source_name: source, fingerprint: hash(url) }\n}));"
       },
       "id": "filter-urls",
       "name": "Filter article URLs",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        320,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "={{ 'SELECT fingerprint FROM news_items WHERE fingerprint IN (' + $input.all().map(i => `'${i.json.fingerprint}'`).join(',') + ') AND llm_summary IS NOT NULL' }}"
-      },
-      "id": "pg-check-cached",
-      "name": "Postgres: Check cached",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.4,
-      "position": [
-        540,
-        200
-      ],
-      "alwaysOutputData": true,
-      "credentials": {
-        "postgres": {
-          "id": "PG_CRED",
-          "name": "VoiceScribe Postgres"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const cachedFps = new Set($input.all().map(i => i.json.fingerprint).filter(Boolean));\nconst allUrls = $('Filter article URLs').all();\nconst newArticles = allUrls.filter(i => !cachedFps.has(i.json.fingerprint));\nif (newArticles.length === 0) {\n  // All cached - output a sentinel so Per article Done branch still fires\n  return [{ json: { _all_cached: true } }];\n}\nreturn newArticles;"
-      },
-      "id": "remove-cached",
-      "name": "Remove cached",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        760,
+        200,
         200
       ]
     },
@@ -130,32 +89,12 @@
         "batchSize": 1,
         "options": {}
       },
-      "id": "batch",
+      "id": "batch-extract",
       "name": "Per article",
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        980,
-        200
-      ]
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "boolean": [
-            {
-              "value1": "={{ $json._all_cached === true }}",
-              "value2": true
-            }
-          ]
-        }
-      },
-      "id": "if-sentinel",
-      "name": "If sentinel",
-      "type": "n8n-nodes-base.if",
-      "typeVersion": 1,
-      "position": [
-        1150,
+        800,
         200
       ]
     },
@@ -167,56 +106,40 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"url\": \"{{$json.article_url}}\",\n  \"formats\": [{\n    \"type\": \"json\",\n    \"prompt\": \"Extract this news article for a 60-second audio bulletin. Return fields: headline (<=90 chars, plain text), dek (1 sentence), body (180-220 words, plain spoken prose for TTS \u2014 no URLs, no markdown, expand abbreviations), published_date (ISO), source (publisher).\"\n  }],\n  \"onlyMainContent\": true\n}",
-        "options": {
-          "response": {
-            "response": {
-              "neverError": false,
-              "responseFormat": "json"
-            }
-          }
-        }
+        "jsonBody": "={\n  \"url\": \"{{ $json.url }}\",\n  \"formats\": [\"markdown\"],\n  \"onlyMainContent\": true\n}",
+        "options": {}
       },
       "id": "fc-extract",
       "name": "Firecrawl: extract article",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        780,
-        200
+        950,
+        100
       ],
       "credentials": {
         "httpHeaderAuth": {
           "id": "FIRECRAWL_CRED",
-          "name": "Firecrawl Bearer"
+          "name": "Firecrawl API Key"
         }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const q = s => s == null ? 'NULL' : `'${String(s).replace(/'/g, \"''\")}'`;\nconst qa = arr => `'{${(arr || []).map(v => String(v).replace(/'/g, \"''\")).join(',')}}'`;\nconst out = [];\nfor (const item of $input.all()) {\n  const j = item.json?.data?.json || {};\n  const ctx = $('Per article').itemMatching(item.pairedItem.item).json;\n  if (!j.headline || !j.body) continue;\n  const fingerprint = require('crypto').createHash('sha256').update(ctx.article_url).digest('hex').slice(0, 16);\n  const scraped_at = new Date().toISOString();\n  const insert_sql = `INSERT INTO news_items (fingerprint, source_name, article_url, language, headline, dek, body, published_date, topics, scraped_at) VALUES (${q(fingerprint)}, ${q(ctx.source_name)}, ${q(ctx.article_url)}, ${q(ctx.language)}, ${q(j.headline)}, ${q(j.dek)}, ${q(j.body)}, ${q(j.published_date)}, ${qa(ctx.topics)}, ${q(scraped_at)}) ON CONFLICT (fingerprint) DO NOTHING`;\n  out.push({ json: { fingerprint, source_name: ctx.source_name, article_url: ctx.article_url, language: ctx.language, headline: j.headline, dek: j.dek || null, body: j.body, insert_sql } });\n}\nreturn out;"
       },
-      "id": "shape",
-      "name": "Shape for DB",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1020,
-        200
-      ]
+      "continueOnFail": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "={{ $json.insert_sql }}"
+        "query": "=INSERT INTO news_items (fingerprint, headline, body, source_name, article_url, language, scraped_at) VALUES ('{{ $node[\"Per article\"].json.fingerprint }}', '{{ $json.data.metadata.title.replace(/'/g, \"''\") }}', '{{ $json.data.markdown.replace(/'/g, \"''\") }}', '{{ $node[\"Per article\"].json.source_name }}', '{{ $node[\"Per article\"].json.url }}', 'en', NOW()) ON CONFLICT (fingerprint) DO NOTHING;"
       },
       "id": "pg-save-raw",
       "name": "Postgres: Save raw article",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1260,
-        200
+        1200,
+        100
       ],
       "credentials": {
         "postgres": {
@@ -227,14 +150,103 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $('Shape for DB').first().json;\nconst userMsg = ['Headline: ', item.headline, String.fromCharCode(10), String.fromCharCode(10), 'Content: ', item.body].join('');\nconst payload = {\n  messages: [\n    { role: 'system', content: 'You are a world-class broadcast news scriptwriter. Rewrite the following article into a 220-word spoken-prose paragraph for a news anchor. Use a neutral, professional tone. No markdown, no bullet points, no URLs. Expand all abbreviations. Ensure it flows naturally for audio consumption.' },\n    { role: 'user', content: userMsg }\n  ],\n  temperature: 0.7\n};\nreturn [{ json: { ...item, llm_payload: payload } }];"
+        "operation": "executeQuery",
+        "query": "SELECT fingerprint, headline, body, source_name FROM news_items WHERE summarized_at IS NULL ORDER BY id DESC LIMIT 30;"
       },
-      "id": "build-llm-payload",
-      "name": "Build LLM Payload",
+      "id": "pg-read-raw",
+      "name": "Postgres: Read raw articles",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1000,
+        300
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const MAX_ARTICLES = 10;\nconst MIN_ARTICLES = 7;\nconst items = $input.all();\n\nconst systemPrompt = [\n  `You are an autonomous AI news editor. Your task is to select the BEST articles for a daily briefing targeting busy tech professionals and business leaders.`,\n  ``,\n  `CRITICAL RULES — YOU MUST FOLLOW THESE EXACTLY:`,\n  `1. You MUST select a MINIMUM of ${MIN_ARTICLES} articles and a MAXIMUM of ${MAX_ARTICLES} articles.`,\n  `2. Selecting fewer than ${MIN_ARTICLES} or more than ${MAX_ARTICLES} is a VIOLATION. Do not do it.`,\n  `3. Rank by: business impact, novelty, and relevance to tech industry.`,\n  `4. Exclude: paywalled articles, listicles, press releases, and opinion pieces with no news value.`,\n  `5. Output ONLY valid JSON with exactly two keys:`,\n  `   - \"selected_fingerprints\": an array of EXACTLY ${MIN_ARTICLES}–${MAX_ARTICLES} fingerprint strings`,\n  `   - \"rationale\": one short sentence explaining the selection`\n].join('\\n');\n\nconst userContent = [\n  `Here are ${items.length} articles to evaluate. Select between ${MIN_ARTICLES} and ${MAX_ARTICLES} of them.`,\n  ``,\n  JSON.stringify(items.map(i => ({ fingerprint: i.json.fingerprint, headline: i.json.headline, source: i.json.source_name }))),\n  ``,\n  `REMINDER: Your response MUST contain between ${MIN_ARTICLES} and ${MAX_ARTICLES} fingerprints in selected_fingerprints. Not more, not fewer.`\n].join('\\n');\n\nconst payload = {\n  messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: userContent }\n  ],\n  temperature: 0,\n  response_format: { type: 'json_object' }\n};\nreturn [{ json: { llm_payload: payload, max_articles: MAX_ARTICLES, min_articles: MIN_ARTICLES } }];"
+      },
+      "id": "build-editor-payload",
+      "name": "Build Editor Payload",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1500,
+        1100,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AZURE_OPENAI_ENDPOINT}}/openai/deployments/{{$env.AZURE_OPENAI_DEPLOYMENT}}/chat/completions?api-version={{$env.AZURE_OPENAI_API_VERSION}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json.llm_payload }}",
+        "options": {}
+      },
+      "id": "editor-rank",
+      "name": "Editor: Select & Rank",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1300,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AZURE_OPENAI_CRED",
+          "name": "Azure OpenAI Key"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "jsCode": "const input = $input.first().json;\nlet rawContent = input.choices[0].message.content || '';\nrawContent = rawContent.replace(/^```(?:json)?\\n/i, '').replace(/\\n```$/i, '').trim();\n\nlet decision;\ntry {\n  decision = JSON.parse(rawContent);\n} catch (e) {\n  throw new Error(`Failed to parse LLM response as JSON. Raw content: ${JSON.stringify(rawContent)}`);\n}\nlet fps = decision.selected_fingerprints;\nif (!Array.isArray(fps)) fps = [];\n\nconst maxArticles = $('Build Editor Payload').first().json.max_articles || 10;\nconst selectedFps = new Set(fps.slice(0, maxArticles));\n\n// Fetch the original items from Postgres node to get the full bodies back\nconst allItems = $('Postgres: Read raw articles').all();\nconst selected = allItems.filter(i => i.json.fingerprint && selectedFps.has(i.json.fingerprint));\n\nconst capped = selected.slice(0, maxArticles);\nconst targetLength = Math.max(30, Math.floor(350 / Math.max(1, capped.length)));\nreturn capped.map(i => ({ json: { ...i.json, target_length: targetLength } }));"
+      },
+      "id": "filter-selected",
+      "name": "Filter Selected",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1400,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "batchSize": 1,
+        "options": {}
+      },
+      "id": "batch-summary",
+      "name": "Per article for summary",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1600,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const item = $json;\nconst payload = {\n  messages: [\n    { role: 'system', content: `Summarize this article in exactly ${item.target_length} words for a podcast anchor targeting business leaders. Keep it concise, action-oriented, and focus on the business impact. Spoken prose, professional tone.` },\n    { role: 'user', content: `Headline: ${item.headline}\\n\\nContent: ${item.body}` }\n  ],\n  temperature: 0.7\n};\nreturn [{ json: { ...item, llm_payload: payload } }];"
+      },
+      "id": "summary-payload",
+      "name": "Build Summary Payload",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1800,
         200
       ]
     },
@@ -247,20 +259,14 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.llm_payload }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
+        "options": {}
       },
       "id": "llm-summarize",
       "name": "Azure OpenAI: Summarize",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1500,
+        2000,
         200
       ],
       "credentials": {
@@ -268,19 +274,22 @@
           "id": "AZURE_OPENAI_CRED",
           "name": "Azure OpenAI Key"
         }
-      }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE news_items SET llm_summary = '{{ $json.choices[0].message.content.replace(/'/g, \"''\") }}', summarized_at = NOW() WHERE fingerprint = '{{ $node[\"Shape for DB\"].json.fingerprint }}';"
+        "query": "=UPDATE news_items SET llm_summary = '{{ $json.choices[0].message.content.split(\"'\").join(\"''\") }}', summarized_at = NOW() WHERE fingerprint = '{{ $node[\"Build Summary Payload\"].json[\"fingerprint\"] }}'"
       },
       "id": "pg-update-summary",
       "name": "Postgres: Update summary",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1740,
+        2200,
         200
       ],
       "credentials": {
@@ -293,15 +302,15 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT fingerprint, headline, llm_summary, source_name, language FROM news_items WHERE scraped_at >= date_trunc('day', NOW()) AND llm_summary IS NOT NULL ORDER BY scraped_at DESC;"
+        "query": "SELECT fingerprint, headline, llm_summary, source_name FROM news_items WHERE llm_summary IS NOT NULL AND summarized_at >= NOW() - INTERVAL '2 hours' ORDER BY summarized_at DESC;"
       },
       "id": "pg-read-summaries",
       "name": "Postgres: Read summaries",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        780,
-        500
+        1800,
+        400
       ],
       "credentials": {
         "postgres": {
@@ -312,15 +321,54 @@
     },
     {
       "parameters": {
-        "jsCode": "const q = s => s == null ? 'NULL' : `'${String(s).replace(/'/g, \"''\")}'`;\nconst items = $input.all();\nconst summaries = items.map(i => i.json.llm_summary).filter(Boolean);\nconst sources = [...new Set(items.map(i => i.json.source_name))];\nconst script = summaries.join('\\n\\n---\\n\\n');\n\nconst targetLang = 'English';\nconst code = 'en';\nconst systemPrompt = `You are an expert podcast scriptwriter for a lively, 2-person daily news podcast. Assemble the provided article summaries into a continuous conversational flow. The final script MUST be in ${targetLang}. Format the output precisely for a Text-to-Speech engine. Use clear speaker labels (\"Joe:\" and \"Jane:\") and include inline audio tags to direct the delivery.\\n\\n### DIRECTOR\\'S NOTES\\nStyle: Upbeat, positive, engaging, and explicitly inviting. The podcast must capture and keep the attention of listeners with a low attention span.\\nDynamics: High-speed delivery with fluid transitions \u2014 no dead air.\\nPacing: Fast and punchy.\\nAccent: Use a native, natural ${targetLang} accent for both speakers. If English, Joe is an enthusiastic London DJ and Jane has a bright, Southern California accent.\\nTags: Use inline tags like [excitedly], [laughs], [bored], [whispers], [reluctantly], [sighs], [gasp], [very fast] to add emotion and variation to the delivery. Please use the English versions of these tags even for non-English scripts, as required by the TTS engine.\\n\\nEnsure the conversation flows naturally and accurately conveys the news facts. Include a catchy intro and a warm outro. Total length: 600-900 words.`;\n\nconst episode_sql_template = `INSERT INTO episodes (language, script, source_names) VALUES (${q(code)}, '___SCRIPT_PLACEHOLDER___', '{${sources.map(s => s.replace(/'/g, \"''\")).join(',')}}') RETURNING id`;\nconst llm_payload = { messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: `Here are ${summaries.length} article summaries (translate and adapt them to ${targetLang} natively):\\n\\n${script}` } ], temperature: 0.7 };\n\nreturn [{ json: { summaries, sources, language: code, article_count: summaries.length, episode_sql_template, llm_payload } }];"
+        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'English';\nconst code = 'en';\nconst hour = new Date().getHours();\nlet timeRef = 'today';\nif (hour >= 5 && hour < 12) timeRef = 'this morning';\nelse if (hour >= 12 && hour < 17) timeRef = 'this afternoon';\nelse if (hour >= 17 && hour < 22) timeRef = 'tonight';\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Joe and Jane) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Use audio tags like [excitedly].`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
       },
-      "id": "prep-assemble-en",
-      "name": "Prepare for assembly (English)",
+      "id": "prep-en",
+      "name": "Prepare (English)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1020,
-        500
+        2000,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'Italian';\nconst code = 'it';\nconst hour = new Date().getHours();\nlet timeRef = 'oggi';\nif (hour >= 5 && hour < 12) timeRef = 'questa mattina';\nelse if (hour >= 12 && hour < 17) timeRef = 'questo pomeriggio';\nelse if (hour >= 17 && hour < 22) timeRef = 'stasera';\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Joe and Jane) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Use audio tags like [excitedly].`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+      },
+      "id": "prep-it",
+      "name": "Prepare (Italian)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'French';\nconst code = 'fr';\nconst hour = new Date().getHours();\nlet timeRef = 'aujourd\\'hui';\nif (hour >= 5 && hour < 12) timeRef = 'ce matin';\nelse if (hour >= 12 && hour < 17) timeRef = 'cet après-midi';\nelse if (hour >= 17 && hour < 22) timeRef = 'ce soir';\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Joe and Jane) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Use audio tags like [excitedly].`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+      },
+      "id": "prep-fr",
+      "name": "Prepare (French)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'Bangla';\nconst code = 'bn';\nconst hour = new Date().getHours();\nlet timeRef = 'আজ'; // today\nif (hour >= 5 && hour < 12) timeRef = 'আজ সকালে'; // this morning\nelse if (hour >= 12 && hour < 17) timeRef = 'আজ দুপুরে'; // this afternoon\nelse if (hour >= 17 && hour < 22) timeRef = 'আজ সন্ধ্যায়'; // tonight\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Joe and Jane) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Use audio tags like [excitedly].`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+      },
+      "id": "prep-bn",
+      "name": "Prepare (Bangla)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        1000
       ]
     },
     {
@@ -332,21 +380,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.llm_payload }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
+        "options": {}
       },
       "id": "llm-assemble-en",
-      "name": "Azure OpenAI: Assemble Episode (English)",
+      "name": "Assemble (English)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1260,
-        500
+        2200,
+        400
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -357,39 +399,6 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "={{ $node[\"Prepare for assembly (English)\"].json.episode_sql_template.split('___SCRIPT_PLACEHOLDER___').join($json.choices[0].message.content.replace(/'/g, \"''\")) }}"
-      },
-      "id": "pg-save-episode-en",
-      "name": "Postgres: Save episode (English)",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.4,
-      "position": [
-        1500,
-        500
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "PG_CRED",
-          "name": "VoiceScribe Postgres"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const q = s => s == null ? 'NULL' : `'${String(s).replace(/'/g, \"''\")}'`;\nconst items = $input.all();\nconst summaries = items.map(i => i.json.llm_summary).filter(Boolean);\nconst sources = [...new Set(items.map(i => i.json.source_name))];\nconst script = summaries.join('\\n\\n---\\n\\n');\n\nconst targetLang = 'Italian';\nconst code = 'it';\nconst systemPrompt = `You are an expert podcast scriptwriter for a lively, 2-person daily news podcast. Assemble the provided article summaries into a continuous conversational flow. The final script MUST be in ${targetLang}. Format the output precisely for a Text-to-Speech engine. Use clear speaker labels (\"Joe:\" and \"Jane:\") and include inline audio tags to direct the delivery.\\n\\n### DIRECTOR\\'S NOTES\\nStyle: Upbeat, positive, engaging, and explicitly inviting. The podcast must capture and keep the attention of listeners with a low attention span.\\nDynamics: High-speed delivery with fluid transitions \u2014 no dead air.\\nPacing: Fast and punchy.\\nAccent: Use a native, natural ${targetLang} accent for both speakers. If English, Joe is an enthusiastic London DJ and Jane has a bright, Southern California accent.\\nTags: Use inline tags like [excitedly], [laughs], [bored], [whispers], [reluctantly], [sighs], [gasp], [very fast] to add emotion and variation to the delivery. Please use the English versions of these tags even for non-English scripts, as required by the TTS engine.\\n\\nEnsure the conversation flows naturally and accurately conveys the news facts. Include a catchy intro and a warm outro. Total length: 600-900 words.`;\n\nconst episode_sql_template = `INSERT INTO episodes (language, script, source_names) VALUES (${q(code)}, '___SCRIPT_PLACEHOLDER___', '{${sources.map(s => s.replace(/'/g, \"''\")).join(',')}}') RETURNING id`;\nconst llm_payload = { messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: `Here are ${summaries.length} article summaries (translate and adapt them to ${targetLang} natively):\\n\\n${script}` } ], temperature: 0.7 };\n\nreturn [{ json: { summaries, sources, language: code, article_count: summaries.length, episode_sql_template, llm_payload } }];"
-      },
-      "id": "prep-assemble-it",
-      "name": "Prepare for assembly (Italian)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1020,
-        700
-      ]
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "={{$env.AZURE_OPENAI_ENDPOINT}}/openai/deployments/{{$env.AZURE_OPENAI_DEPLOYMENT}}/chat/completions?api-version={{$env.AZURE_OPENAI_API_VERSION}}",
         "authentication": "genericCredentialType",
@@ -397,21 +406,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.llm_payload }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
+        "options": {}
       },
       "id": "llm-assemble-it",
-      "name": "Azure OpenAI: Assemble Episode (Italian)",
+      "name": "Assemble (Italian)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1260,
-        700
+        2200,
+        600
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -422,39 +425,6 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "={{ $node[\"Prepare for assembly (Italian)\"].json.episode_sql_template.split('___SCRIPT_PLACEHOLDER___').join($json.choices[0].message.content.replace(/'/g, \"''\")) }}"
-      },
-      "id": "pg-save-episode-it",
-      "name": "Postgres: Save episode (Italian)",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.4,
-      "position": [
-        1500,
-        700
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "PG_CRED",
-          "name": "VoiceScribe Postgres"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const q = s => s == null ? 'NULL' : `'${String(s).replace(/'/g, \"''\")}'`;\nconst items = $input.all();\nconst summaries = items.map(i => i.json.llm_summary).filter(Boolean);\nconst sources = [...new Set(items.map(i => i.json.source_name))];\nconst script = summaries.join('\\n\\n---\\n\\n');\n\nconst targetLang = 'French';\nconst code = 'fr';\nconst systemPrompt = `You are an expert podcast scriptwriter for a lively, 2-person daily news podcast. Assemble the provided article summaries into a continuous conversational flow. The final script MUST be in ${targetLang}. Format the output precisely for a Text-to-Speech engine. Use clear speaker labels (\"Joe:\" and \"Jane:\") and include inline audio tags to direct the delivery.\\n\\n### DIRECTOR\\'S NOTES\\nStyle: Upbeat, positive, engaging, and explicitly inviting. The podcast must capture and keep the attention of listeners with a low attention span.\\nDynamics: High-speed delivery with fluid transitions \u2014 no dead air.\\nPacing: Fast and punchy.\\nAccent: Use a native, natural ${targetLang} accent for both speakers. If English, Joe is an enthusiastic London DJ and Jane has a bright, Southern California accent.\\nTags: Use inline tags like [excitedly], [laughs], [bored], [whispers], [reluctantly], [sighs], [gasp], [very fast] to add emotion and variation to the delivery. Please use the English versions of these tags even for non-English scripts, as required by the TTS engine.\\n\\nEnsure the conversation flows naturally and accurately conveys the news facts. Include a catchy intro and a warm outro. Total length: 600-900 words.`;\n\nconst episode_sql_template = `INSERT INTO episodes (language, script, source_names) VALUES (${q(code)}, '___SCRIPT_PLACEHOLDER___', '{${sources.map(s => s.replace(/'/g, \"''\")).join(',')}}') RETURNING id`;\nconst llm_payload = { messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: `Here are ${summaries.length} article summaries (translate and adapt them to ${targetLang} natively):\\n\\n${script}` } ], temperature: 0.7 };\n\nreturn [{ json: { summaries, sources, language: code, article_count: summaries.length, episode_sql_template, llm_payload } }];"
-      },
-      "id": "prep-assemble-fr",
-      "name": "Prepare for assembly (French)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1020,
-        900
-      ]
-    },
-    {
-      "parameters": {
         "method": "POST",
         "url": "={{$env.AZURE_OPENAI_ENDPOINT}}/openai/deployments/{{$env.AZURE_OPENAI_DEPLOYMENT}}/chat/completions?api-version={{$env.AZURE_OPENAI_API_VERSION}}",
         "authentication": "genericCredentialType",
@@ -462,21 +432,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.llm_payload }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
+        "options": {}
       },
       "id": "llm-assemble-fr",
-      "name": "Azure OpenAI: Assemble Episode (French)",
+      "name": "Assemble (French)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1260,
-        900
+        2200,
+        800
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -484,39 +448,6 @@
           "name": "Azure OpenAI Key"
         }
       }
-    },
-    {
-      "parameters": {
-        "operation": "executeQuery",
-        "query": "={{ $node[\"Prepare for assembly (French)\"].json.episode_sql_template.split('___SCRIPT_PLACEHOLDER___').join($json.choices[0].message.content.replace(/'/g, \"''\")) }}"
-      },
-      "id": "pg-save-episode-fr",
-      "name": "Postgres: Save episode (French)",
-      "type": "n8n-nodes-base.postgres",
-      "typeVersion": 2.4,
-      "position": [
-        1500,
-        900
-      ],
-      "credentials": {
-        "postgres": {
-          "id": "PG_CRED",
-          "name": "VoiceScribe Postgres"
-        }
-      }
-    },
-    {
-      "parameters": {
-        "jsCode": "const q = s => s == null ? 'NULL' : `'${String(s).replace(/'/g, \"''\")}'`;\nconst items = $input.all();\nconst summaries = items.map(i => i.json.llm_summary).filter(Boolean);\nconst sources = [...new Set(items.map(i => i.json.source_name))];\nconst script = summaries.join('\\n\\n---\\n\\n');\n\nconst targetLang = 'Bangla';\nconst code = 'bn';\nconst systemPrompt = `You are an expert podcast scriptwriter for a lively, 2-person daily news podcast. Assemble the provided article summaries into a continuous conversational flow. The final script MUST be in ${targetLang}. Format the output precisely for a Text-to-Speech engine. Use clear speaker labels (\"Joe:\" and \"Jane:\") and include inline audio tags to direct the delivery.\\n\\n### DIRECTOR\\'S NOTES\\nStyle: Upbeat, positive, engaging, and explicitly inviting. The podcast must capture and keep the attention of listeners with a low attention span.\\nDynamics: High-speed delivery with fluid transitions \u2014 no dead air.\\nPacing: Fast and punchy.\\nAccent: Use a native, natural ${targetLang} accent for both speakers. If English, Joe is an enthusiastic London DJ and Jane has a bright, Southern California accent.\\nTags: Use inline tags like [excitedly], [laughs], [bored], [whispers], [reluctantly], [sighs], [gasp], [very fast] to add emotion and variation to the delivery. Please use the English versions of these tags even for non-English scripts, as required by the TTS engine.\\n\\nEnsure the conversation flows naturally and accurately conveys the news facts. Include a catchy intro and a warm outro. Total length: 600-900 words.`;\n\nconst episode_sql_template = `INSERT INTO episodes (language, script, source_names) VALUES (${q(code)}, '___SCRIPT_PLACEHOLDER___', '{${sources.map(s => s.replace(/'/g, \"''\")).join(',')}}') RETURNING id`;\nconst llm_payload = { messages: [ { role: 'system', content: systemPrompt }, { role: 'user', content: `Here are ${summaries.length} article summaries (translate and adapt them to ${targetLang} natively):\\n\\n${script}` } ], temperature: 0.7 };\n\nreturn [{ json: { summaries, sources, language: code, article_count: summaries.length, episode_sql_template, llm_payload } }];"
-      },
-      "id": "prep-assemble-bn",
-      "name": "Prepare for assembly (Bangla)",
-      "type": "n8n-nodes-base.code",
-      "typeVersion": 2,
-      "position": [
-        1020,
-        1100
-      ]
     },
     {
       "parameters": {
@@ -527,21 +458,15 @@
         "sendBody": true,
         "specifyBody": "json",
         "jsonBody": "={{ $json.llm_payload }}",
-        "options": {
-          "response": {
-            "response": {
-              "responseFormat": "json"
-            }
-          }
-        }
+        "options": {}
       },
       "id": "llm-assemble-bn",
-      "name": "Azure OpenAI: Assemble Episode (Bangla)",
+      "name": "Assemble (Bangla)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
       "position": [
-        1260,
-        1100
+        2200,
+        1000
       ],
       "credentials": {
         "httpHeaderAuth": {
@@ -552,16 +477,132 @@
     },
     {
       "parameters": {
-        "operation": "executeQuery",
-        "query": "={{ $node[\"Prepare for assembly (Bangla)\"].json.episode_sql_template.split('___SCRIPT_PLACEHOLDER___').join($json.choices[0].message.content.replace(/'/g, \"''\")) }}"
+        "method": "POST",
+        "url": "={{$env.AZURE_OPENAI_ENDPOINT}}/openai/deployments/{{$env.AZURE_OPENAI_DEPLOYMENT}}/chat/completions?api-version={{$env.AZURE_OPENAI_API_VERSION}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally and uses audio tags correctly. Output final polished version.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3\n}",
+        "options": {}
       },
-      "id": "pg-save-episode-bn",
-      "name": "Postgres: Save episode (Bangla)",
+      "id": "review-en",
+      "name": "Review (English)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        400
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AZURE_OPENAI_CRED",
+          "name": "Azure OpenAI Key"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AZURE_OPENAI_ENDPOINT}}/openai/deployments/{{$env.AZURE_OPENAI_DEPLOYMENT}}/chat/completions?api-version={{$env.AZURE_OPENAI_API_VERSION}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally and uses audio tags correctly. Output final polished version.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3\n}",
+        "options": {}
+      },
+      "id": "review-it",
+      "name": "Review (Italian)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        600
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AZURE_OPENAI_CRED",
+          "name": "Azure OpenAI Key"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AZURE_OPENAI_ENDPOINT}}/openai/deployments/{{$env.AZURE_OPENAI_DEPLOYMENT}}/chat/completions?api-version={{$env.AZURE_OPENAI_API_VERSION}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally and uses audio tags correctly. Output final polished version.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3\n}",
+        "options": {}
+      },
+      "id": "review-fr",
+      "name": "Review (French)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        800
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AZURE_OPENAI_CRED",
+          "name": "Azure OpenAI Key"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{$env.AZURE_OPENAI_ENDPOINT}}/openai/deployments/{{$env.AZURE_OPENAI_DEPLOYMENT}}/chat/completions?api-version={{$env.AZURE_OPENAI_API_VERSION}}",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally and uses audio tags correctly. Output final polished version.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3\n}",
+        "options": {}
+      },
+      "id": "review-bn",
+      "name": "Review (Bangla)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2400,
+        1000
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "AZURE_OPENAI_CRED",
+          "name": "Azure OpenAI Key"
+        }
+      },
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 5000
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO episodes (language, script, created_at) VALUES ('en', '{{ $json.choices[0].message.content.replace(/'/g, \"''\") }}', NOW());"
+      },
+      "id": "pg-save-en",
+      "name": "Save (English)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
       "position": [
-        1500,
-        1100
+        2600,
+        400
       ],
       "credentials": {
         "postgres": {
@@ -569,6 +610,98 @@
           "name": "VoiceScribe Postgres"
         }
       }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO episodes (language, script, created_at) VALUES ('it', '{{ $json.choices[0].message.content.replace(/'/g, \"''\") }}', NOW());"
+      },
+      "id": "pg-save-it",
+      "name": "Save (Italian)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2600,
+        600
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO episodes (language, script, created_at) VALUES ('fr', '{{ $json.choices[0].message.content.replace(/'/g, \"''\") }}', NOW());"
+      },
+      "id": "pg-save-fr",
+      "name": "Save (French)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2600,
+        800
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO episodes (language, script, created_at) VALUES ('bn', '{{ $json.choices[0].message.content.replace(/'/g, \"''\") }}', NOW());"
+      },
+      "id": "pg-save-bn",
+      "name": "Save (Bangla)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2600,
+        1000
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "fc-success-check",
+              "leftValue": "={{ $json.success }}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "fc-guard",
+      "name": "Firecrawl: success?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        100
+      ]
     }
   ],
   "connections": {
@@ -620,28 +753,6 @@
       "main": [
         [
           {
-            "node": "Postgres: Check cached",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Postgres: Check cached": {
-      "main": [
-        [
-          {
-            "node": "Remove cached",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Remove cached": {
-      "main": [
-        [
-          {
             "node": "Per article",
             "type": "main",
             "index": 0
@@ -653,25 +764,7 @@
       "main": [
         [
           {
-            "node": "Postgres: Read summaries",
-            "type": "main",
-            "index": 0
-          }
-        ],
-        [
-          {
-            "node": "If sentinel",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "If sentinel": {
-      "main": [
-        [
-          {
-            "node": "Per article",
+            "node": "Postgres: Read raw articles",
             "type": "main",
             "index": 0
           }
@@ -689,18 +782,7 @@
       "main": [
         [
           {
-            "node": "Shape for DB",
-            "type": "main",
-            "index": 0
-          }
-        ]
-      ]
-    },
-    "Shape for DB": {
-      "main": [
-        [
-          {
-            "node": "Postgres: Save raw article",
+            "node": "Firecrawl: success?",
             "type": "main",
             "index": 0
           }
@@ -711,14 +793,76 @@
       "main": [
         [
           {
-            "node": "Build LLM Payload",
+            "node": "Per article",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Build LLM Payload": {
+    "Postgres: Read raw articles": {
+      "main": [
+        [
+          {
+            "node": "Build Editor Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Editor Payload": {
+      "main": [
+        [
+          {
+            "node": "Editor: Select & Rank",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Editor: Select & Rank": {
+      "main": [
+        [
+          {
+            "node": "Filter Selected",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter Selected": {
+      "main": [
+        [
+          {
+            "node": "Per article for summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Per article for summary": {
+      "main": [
+        [
+          {
+            "node": "Postgres: Read summaries",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Build Summary Payload",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Summary Payload": {
       "main": [
         [
           {
@@ -744,7 +888,7 @@
       "main": [
         [
           {
-            "node": "Per article",
+            "node": "Per article for summary",
             "type": "main",
             "index": 0
           }
@@ -755,110 +899,172 @@
       "main": [
         [
           {
-            "node": "Prepare for assembly (English)",
+            "node": "Prepare (English)",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Prepare for assembly (Italian)",
+            "node": "Prepare (Italian)",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Prepare for assembly (French)",
+            "node": "Prepare (French)",
             "type": "main",
             "index": 0
           },
           {
-            "node": "Prepare for assembly (Bangla)",
+            "node": "Prepare (Bangla)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare for assembly (English)": {
+    "Prepare (English)": {
       "main": [
         [
           {
-            "node": "Azure OpenAI: Assemble Episode (English)",
+            "node": "Assemble (English)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Azure OpenAI: Assemble Episode (English)": {
+    "Assemble (English)": {
       "main": [
         [
           {
-            "node": "Postgres: Save episode (English)",
+            "node": "Review (English)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare for assembly (Italian)": {
+    "Review (English)": {
       "main": [
         [
           {
-            "node": "Azure OpenAI: Assemble Episode (Italian)",
+            "node": "Save (English)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Azure OpenAI: Assemble Episode (Italian)": {
+    "Prepare (Italian)": {
       "main": [
         [
           {
-            "node": "Postgres: Save episode (Italian)",
+            "node": "Assemble (Italian)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare for assembly (French)": {
+    "Assemble (Italian)": {
       "main": [
         [
           {
-            "node": "Azure OpenAI: Assemble Episode (French)",
+            "node": "Review (Italian)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Azure OpenAI: Assemble Episode (French)": {
+    "Review (Italian)": {
       "main": [
         [
           {
-            "node": "Postgres: Save episode (French)",
+            "node": "Save (Italian)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Prepare for assembly (Bangla)": {
+    "Prepare (French)": {
       "main": [
         [
           {
-            "node": "Azure OpenAI: Assemble Episode (Bangla)",
+            "node": "Assemble (French)",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Azure OpenAI: Assemble Episode (Bangla)": {
+    "Assemble (French)": {
       "main": [
         [
           {
-            "node": "Postgres: Save episode (Bangla)",
+            "node": "Review (French)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review (French)": {
+      "main": [
+        [
+          {
+            "node": "Save (French)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare (Bangla)": {
+      "main": [
+        [
+          {
+            "node": "Assemble (Bangla)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Assemble (Bangla)": {
+      "main": [
+        [
+          {
+            "node": "Review (Bangla)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Review (Bangla)": {
+      "main": [
+        [
+          {
+            "node": "Save (Bangla)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Firecrawl: success?": {
+      "main": [
+        [
+          {
+            "node": "Postgres: Save raw article",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Per article",
             "type": "main",
             "index": 0
           }

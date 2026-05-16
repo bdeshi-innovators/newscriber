@@ -11,6 +11,7 @@ CREATE TABLE IF NOT EXISTS users (
     phone_number  VARCHAR(32) PRIMARY KEY,
     language_pref VARCHAR(2)  NOT NULL DEFAULT 'en'
                   CHECK (language_pref IN ('en','it','bn')),
+    timezone      TEXT,
     created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -28,11 +29,13 @@ CREATE TABLE IF NOT EXISTS news_items (
     headline        TEXT        NOT NULL,
     dek             TEXT,
     body            TEXT        NOT NULL,            -- raw prose from Firecrawl extract
-    llm_summary     TEXT,                            -- polished ~220-word broadcast prose from LLM
+    score           INTEGER,                         -- relevance score (1-10)
+    llm_summary     TEXT,                            -- polished broadcast prose from LLM
     summarized_at   TIMESTAMPTZ,                     -- set when LLM summary completes
     published_date  DATE,
     topics          TEXT[]      NOT NULL DEFAULT '{}',
     scraped_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    skipped_at      TIMESTAMPTZ,                     -- set if article was rejected by agent
     translated_at   TIMESTAMPTZ,                     -- set when downstream finishes translating
     tts_at          TIMESTAMPTZ,                     -- set when MP3 is uploaded
     mp3_url         TEXT,                            -- public URL for WhatsApp media
