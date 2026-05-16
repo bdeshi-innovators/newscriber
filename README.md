@@ -3,7 +3,7 @@
 V1 hackathon prototype of a multilingual automated WhatsApp news delivery system.
 This slice is the **interactive onboarding webhook**: receive WhatsApp inbound
 messages, register the user in Postgres, let them pick a language
-(English / Italian / Bangla), and acknowledge with a placeholder audio drop.
+(English / Italian / French / Bangla), and acknowledge with a placeholder audio drop.
 
 ## Stack & Technologies
 
@@ -12,7 +12,8 @@ The system is built on a modern, containerized stack designed for reliability an
 ### Core Services
 - **[Go](https://go.dev/)**: The core language used for the `webhook-app`. It provides high-performance, concurrent handling of WhatsApp interactions.
 - **[PostgreSQL](https://www.postgresql.org/)**: A robust relational database for persisting user profiles, language preferences, and news items.
-- **[n8n](https://n8n.io/)**: A powerful low-code workflow automation tool used for orchestrating the news ingestion, summarization, and audio generation pipeline.
+- **[n8n](https://n8n.io/)**: A powerful low-code workflow automation tool used for orchestrating the news ingestion, summarization (via **Azure OpenAI**), and multi-language script assembly.
+- **[Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service)**: Provides the LLM capabilities for rewriting news articles into spoken prose and assembling them into conversational podcast scripts.
 - **[Caddy](https://caddyserver.com/)**: A modern web server and reverse proxy that handles traffic routing and will provide automatic HTTPS once a domain is attached.
 
 ### Infrastructure & Tooling
@@ -71,12 +72,14 @@ The system is built on a modern, containerized stack designed for reliability an
                              ▼
   ┌────────────────────────────────────────────────────────────┐
   │ n8n  (every ~2h cron workflow)                             │
-  │   1. fetch & dedupe stories                                │
-  │   2. summarize  (LLM — Anthropic / OpenAI)                 │
-  │   3. translate  → en / it / bn                             │
-  │   4. text-to-speech  → MP3 per language                    │
-  │   5. upload MP3 to object store, capture public URL        │
-  │   6. POST /broadcast { language, text, mediaUrl }          │
+  │   1. fetch & dedupe (SHA256 fingerprint)                   │
+  │   2. extract (Firecrawl JSON extraction)                   │
+  │   3. summarize (Azure OpenAI - 220 word prose)             │
+  │   4. assemble (Joe/Jane dual-host conversational script)   │
+  │   5. save to `episodes` table (En / It / Fr / Bn)          │
+  │   6. [FUTURE] text-to-speech → MP3 per language            │
+  │   7. [FUTURE] upload MP3 to object store                   │
+  │   8. [FUTURE] POST /broadcast { language, text, mediaUrl } │
   └────────────────────────────────┬───────────────────────────┘
                                    │
                                    ▼
@@ -117,6 +120,13 @@ The system is built on a modern, containerized stack designed for reliability an
 | **`_data/` bind mounts under compose project namespace** | Host-visible data, no Go-package-walker collisions, no container-name collisions with other projects.                |
 | **`.env` via Compose `env_file:`**                  | Secrets live outside source; new keys (Twilio token, Meta secret, R2 creds…) flow into the container with no compose edit. |
 
+
+---
+
+## Infrastructure & Operations
+
+This section details how to run the system locally, how to verify the webhook, and how the cloud deployment is orchestrated.
+
 ## Run tests locally
 
 Unit tests only (fast, no Docker required):
@@ -148,7 +158,7 @@ running on the machine:
 | ------------- | --------- | -------------- | -------------------------------------------------------------- |
 | `db`          | `55432`   | `5432`         | Postgres 15, data persisted to `./_data/postgres`              |
 | `webhook-app` | `18080`   | `8080`         | Go webhook, reads `DATABASE_URL`, runs migrations on boot      |
-| `n8n`         | `15678`   | `5678`         | Workflow engine, data persisted to `./_data/n8n`               |
+| `n8n`         | `15678`   | `5678`         | Workflow engine, pre-loaded with the **News Pipeline V4** |
 
 > **Why `_data/`?** Go's `./...` package walker ignores directories starting
 > with `_` or `.`, so the host-side data dirs (which contain root-owned
@@ -229,7 +239,7 @@ The deployment is automated via the `Makefile`. Running `make deploy` locally pe
 - **Caddy (Port 80)**: Acts as the entry point. It routes traffic based on the URL path:
   - `http://<IP>/` → Proxies to **n8n** internal port 5678.
   - `http://<IP>/api/webhook/*` → Proxies to **Webhook App** internal port 8080.
-- **n8n**: The workflow engine, pre-configured via `scripts/n8n-init.sh` to import credentials and workflows on startup.
+- **n8n**: The workflow engine, pre-configured via `scripts/n8n-init.sh` to import the **News Pipeline V4** workflow and necessary credentials on startup.
 - **Webhook App**: The Go service that handles WhatsApp interactions.
 - **Postgres**: The database, isolated from direct public access.
 
@@ -261,10 +271,12 @@ M1 unblocks everything downstream.
 
 ### M2 — News pipeline (n8n workflows)
 
-- [ ] Pick news sources (RSS for hackathon; AP / Reuters / NewsAPI for prod)
-- [ ] Workflow: cron `0 */2 * * *` → fetch → dedupe via Postgres → top N stories
-- [ ] LLM summarization node → ~60-90 sec spoken script
-- [ ] Translation: en → it, en → bn (LLM or DeepL)
+- [x] Pick news sources (BBC News, Al Jazeera)
+- [x] Workflow: cron `0 7,13,19 * * *` → fetch → dedupe via Postgres → top 5 stories
+- [x] Extraction: Firecrawl JSON prompt for headline/dek/body
+- [x] LLM summarization node: Azure OpenAI → 220-word spoken script
+- [x] Dual-host assembly: Joe (London DJ) & Jane (SoCal) conversational flow
+- [x] Multi-language support: English, Italian, French, Bangla
 - [ ] TTS per language (ElevenLabs / Azure Speech / Google) → MP3
 - [ ] Upload to object store, capture public URL
 - [ ] HTTP node calls back into `webhook-app /broadcast`
