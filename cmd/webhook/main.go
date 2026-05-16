@@ -19,6 +19,7 @@ import (
 	_ "github.com/jackc/pgx/v5/stdlib"
 
 	appdb "voicescribe-webhook/internal/db"
+	"voicescribe-webhook/internal/tts"
 	"voicescribe-webhook/internal/users"
 	"voicescribe-webhook/internal/webhook"
 )
@@ -62,11 +63,25 @@ func run() error {
 		return fmt.Errorf("migrate: %w", err)
 	}
 
+	
+ttsClient, err := tts.NewClient(
+os.Getenv("OPENROUTER_API_KEY"),
+os.Getenv("STORAGE_ENDPOINT"),
+os.Getenv("STORAGE_ACCESS_KEY"),
+os.Getenv("STORAGE_SECRET_KEY"),
+os.Getenv("STORAGE_BUCKET"),
+os.Getenv("STORAGE_PUBLIC_URL"),
+)
+if err != nil {
+return fmt.Errorf("init tts client: %w", err)
+}
+
 	repo := users.NewPgUserRepository(conn)
-	handler := webhook.NewHandler(repo)
+	handler := webhook.NewHandler(repo, ttsClient)
 
 	mux := http.NewServeMux()
 	mux.Handle("/webhook/whatsapp", handler)
+	mux.HandleFunc("/tts", handler.HandleTTS)
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))
@@ -76,9 +91,9 @@ func run() error {
 		Addr:              ":" + port,
 		Handler:           requestLogger(logger, mux),
 		ReadHeaderTimeout: 10 * time.Second,
-		ReadTimeout:       15 * time.Second,
-		WriteTimeout:      15 * time.Second,
-		IdleTimeout:       60 * time.Second,
+		ReadTimeout:       5 * time.Minute,
+		WriteTimeout:      5 * time.Minute,
+		IdleTimeout:       120 * time.Second,
 	}
 
 	go func() {

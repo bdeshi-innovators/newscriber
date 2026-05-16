@@ -321,7 +321,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'English';\nconst code = 'en';\nconst hour = new Date().getHours();\nlet timeRef = 'today';\nif (hour >= 5 && hour < 12) timeRef = 'this morning';\nelse if (hour >= 12 && hour < 17) timeRef = 'this afternoon';\nelse if (hour >= 17 && hour < 22) timeRef = 'tonight';\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Joe and Jane) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Use audio tags like [excitedly].`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'English';\nconst code = 'en';\nconst hour = new Date().getHours();\nlet timeRef = 'today';\nif (hour >= 5 && hour < 12) timeRef = 'this morning';\nelse if (hour >= 12 && hour < 17) timeRef = 'this afternoon';\nelse if (hour >= 17 && hour < 22) timeRef = 'tonight';\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Alex and Sam) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Output the script as a raw JSON array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
       },
       "id": "prep-en",
       "name": "Prepare (English)",
@@ -334,7 +334,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'Italian';\nconst code = 'it';\nconst hour = new Date().getHours();\nlet timeRef = 'oggi';\nif (hour >= 5 && hour < 12) timeRef = 'questa mattina';\nelse if (hour >= 12 && hour < 17) timeRef = 'questo pomeriggio';\nelse if (hour >= 17 && hour < 22) timeRef = 'stasera';\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Joe and Jane) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Use audio tags like [excitedly].`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'Italian';\nconst code = 'it';\nconst hour = new Date().getHours();\nlet timeRef = 'oggi';\nif (hour >= 5 && hour < 12) timeRef = 'questa mattina';\nelse if (hour >= 12 && hour < 17) timeRef = 'questo pomeriggio';\nelse if (hour >= 17 && hour < 22) timeRef = 'stasera';\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Marco and Sofia) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Output the script as a raw JSON array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
       },
       "id": "prep-it",
       "name": "Prepare (Italian)",
@@ -347,7 +347,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'French';\nconst code = 'fr';\nconst hour = new Date().getHours();\nlet timeRef = 'aujourd\\'hui';\nif (hour >= 5 && hour < 12) timeRef = 'ce matin';\nelse if (hour >= 12 && hour < 17) timeRef = 'cet après-midi';\nelse if (hour >= 17 && hour < 22) timeRef = 'ce soir';\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Joe and Jane) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Use audio tags like [excitedly].`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'French';\nconst code = 'fr';\nconst hour = new Date().getHours();\nlet timeRef = 'aujourd\\'hui';\nif (hour >= 5 && hour < 12) timeRef = 'ce matin';\nelse if (hour >= 12 && hour < 17) timeRef = 'cet après-midi';\nelse if (hour >= 17 && hour < 22) timeRef = 'ce soir';\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Pierre and Marie) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Output the script as a raw JSON array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
       },
       "id": "prep-fr",
       "name": "Prepare (French)",
@@ -360,7 +360,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'Bangla';\nconst code = 'bn';\nconst hour = new Date().getHours();\nlet timeRef = 'আজ'; // today\nif (hour >= 5 && hour < 12) timeRef = 'আজ সকালে'; // this morning\nelse if (hour >= 12 && hour < 17) timeRef = 'আজ দুপুরে'; // this afternoon\nelse if (hour >= 17 && hour < 22) timeRef = 'আজ সন্ধ্যায়'; // tonight\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Joe and Jane) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Use audio tags like [excitedly].`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+        "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'Bangla';\nconst code = 'bn';\nconst hour = new Date().getHours();\nlet timeRef = 'আজ'; // today\nif (hour >= 5 && hour < 12) timeRef = 'আজ সকালে'; // this morning\nelse if (hour >= 12 && hour < 17) timeRef = 'আজ দুপুরে'; // this afternoon\nelse if (hour >= 17 && hour < 22) timeRef = 'আজ সন্ধ্যায়'; // tonight\nconst systemPrompt = `You are a podcast scriptwriter. Assemble these summaries into a 2-person conversation (Fahim and Nusrat) in ${targetLang}. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Output the script as a raw JSON array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
       },
       "id": "prep-bn",
       "name": "Prepare (Bangla)",
@@ -483,7 +483,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally and uses audio tags correctly. Output final polished version.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3\n}",
+        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally. You MUST output a strictly valid JSON object with a single key 'dialogues' containing an array of objects, each with 'speaker' and 'text' keys. Do NOT wrap it in markdown block quotes.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
         "options": {}
       },
       "id": "review-en",
@@ -512,7 +512,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally and uses audio tags correctly. Output final polished version.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3\n}",
+        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally. You MUST output a strictly valid JSON object with a single key 'dialogues' containing an array of objects, each with 'speaker' and 'text' keys. Do NOT wrap it in markdown block quotes.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
         "options": {}
       },
       "id": "review-it",
@@ -541,7 +541,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally and uses audio tags correctly. Output final polished version.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3\n}",
+        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally. You MUST output a strictly valid JSON object with a single key 'dialogues' containing an array of objects, each with 'speaker' and 'text' keys. Do NOT wrap it in markdown block quotes.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
         "options": {}
       },
       "id": "review-fr",
@@ -570,7 +570,7 @@
         "genericAuthType": "httpHeaderAuth",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally and uses audio tags correctly. Output final polished version.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3\n}",
+        "jsonBody": "={\n  \"messages\": [\n    { \"role\": \"system\", \"content\": \"Review this script. Ensure it flows naturally. You MUST output a strictly valid JSON object with a single key 'dialogues' containing an array of objects, each with 'speaker' and 'text' keys. Do NOT wrap it in markdown block quotes.\" },\n    { \"role\": \"user\", \"content\": {{ JSON.stringify($json.choices[0].message.content) }} }\n  ],\n  \"temperature\": 0.3,\n  \"response_format\": { \"type\": \"json_object\" }\n}",
         "options": {}
       },
       "id": "review-bn",
@@ -701,6 +701,78 @@
       "position": [
         1100,
         100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://webhook-app:8080/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content).dialogues, language: 'en', filename: 'episode_en_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
+        "options": {}
+      },
+      "id": "fcbfee6b",
+      "name": "TTS (English)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2600,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://webhook-app:8080/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content).dialogues, language: 'it', filename: 'episode_it_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
+        "options": {}
+      },
+      "id": "2880ca67",
+      "name": "TTS (Italian)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2600,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://webhook-app:8080/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content).dialogues, language: 'fr', filename: 'episode_fr_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
+        "options": {}
+      },
+      "id": "b52799b9",
+      "name": "TTS (French)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2600,
+        800
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://webhook-app:8080/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content).dialogues, language: 'bn', filename: 'episode_bn_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
+        "options": {}
+      },
+      "id": "3bccbdb5",
+      "name": "TTS (Bangla)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2600,
+        1000
       ]
     }
   ],
@@ -947,7 +1019,7 @@
       "main": [
         [
           {
-            "node": "Save (English)",
+            "node": "TTS (English)",
             "type": "main",
             "index": 0
           }
@@ -980,7 +1052,7 @@
       "main": [
         [
           {
-            "node": "Save (Italian)",
+            "node": "TTS (Italian)",
             "type": "main",
             "index": 0
           }
@@ -1013,7 +1085,7 @@
       "main": [
         [
           {
-            "node": "Save (French)",
+            "node": "TTS (French)",
             "type": "main",
             "index": 0
           }
@@ -1046,7 +1118,7 @@
       "main": [
         [
           {
-            "node": "Save (Bangla)",
+            "node": "TTS (Bangla)",
             "type": "main",
             "index": 0
           }
@@ -1070,6 +1142,50 @@
           }
         ]
       ]
+    },
+    "TTS (English)": {
+      "main": [
+        [
+          {
+            "node": "Save (English)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TTS (Italian)": {
+      "main": [
+        [
+          {
+            "node": "Save (Italian)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TTS (French)": {
+      "main": [
+        [
+          {
+            "node": "Save (French)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "TTS (Bangla)": {
+      "main": [
+        [
+          {
+            "node": "Save (Bangla)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
     }
   },
   "settings": {
@@ -1077,5 +1193,6 @@
   },
   "meta": {
     "templateCredsSetupCompleted": false
-  }
+  },
+  "id": "VoiceScribeV4"
 }

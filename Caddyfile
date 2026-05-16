@@ -4,7 +4,7 @@
 # 3. Caddy will automatically handle Let's Encrypt certificates.
 :80 {
     # Webhook App
-    handle_path /api/webhook/* {
+    handle_path /api/* {
         reverse_proxy webhook-app:8080
     }
 

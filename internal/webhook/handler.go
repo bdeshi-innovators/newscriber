@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"voicescribe-webhook/internal/tts"
 	"voicescribe-webhook/internal/users"
 )
 
@@ -23,10 +24,14 @@ const (
 
 type Handler struct {
 	repo users.UserRepository
+	tts  *tts.Client
 }
 
-func NewHandler(repo users.UserRepository) *Handler {
-	return &Handler{repo: repo}
+func NewHandler(repo users.UserRepository, ttsClient *tts.Client) *Handler {
+	return &Handler{
+		repo: repo,
+		tts:  ttsClient,
+	}
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {

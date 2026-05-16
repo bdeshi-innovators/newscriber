@@ -1,0 +1,446 @@
+{
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 * * * *"
+            }
+          ]
+        }
+      },
+      "id": "4d320231-36fa-4a",
+      "name": "Every Hour",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        0,
+        100
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "b6fb36b4-d447-49",
+      "name": "Manual Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [ { json: { force: false } } ];"
+      },
+      "id": "0a6a3bd6-6331-43",
+      "name": "Configuration",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=SELECT id, language, script FROM episodes WHERE ({{ $json.force }} = true OR tts_at IS NULL) ORDER BY created_at DESC LIMIT 10;"
+      },
+      "id": "aba6016a-4106-4b",
+      "name": "Postgres: Read Latest Scripts",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        450,
+        200
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst targetLang = 'en';\n\nreturn items.filter(item => {\n  const lang = item.json.language;\n  return lang && lang.toLowerCase().substring(0,2) === targetLang.toLowerCase().substring(0,2);\n}).map(item => {\n  const json = item.json;\n  const filename = `episode_en_${json.id}_${new Date().getTime()}.wav`;\n  let dialogues = [];\n  try {\n    const parsed = JSON.parse(json.script);\n    dialogues = parsed.dialogues || [];\n  } catch(e) {\n    const parts = json.script.split('\\n\\n');\n    for (const part of parts) {\n      if (part.trim().length > 0) {\n        dialogues.push({ speaker: 'Host', text: part.trim() });\n      }\n    }\n  }\n  return {\n    json: {\n      script: dialogues,\n      language: 'en',\n      filename: filename,\n      episode_id: json.id\n    }\n  };\n});"
+      },
+      "id": "aa5748ec-8c71-41",
+      "name": "Build Payload (English)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://webhook-app:8080/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "retryOnFail": true,
+          "maxTries": 3,
+          "waitBetweenTries": 5000
+        }
+      },
+      "id": "2451f81d-750f-45",
+      "name": "Generate TTS (English)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (English)').item.json.episode_id }};"
+      },
+      "id": "1c738d88-b6f7-42",
+      "name": "Update Episode (English)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1250,
+        100
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst targetLang = 'it';\n\nreturn items.filter(item => {\n  const lang = item.json.language;\n  return lang && lang.toLowerCase().substring(0,2) === targetLang.toLowerCase().substring(0,2);\n}).map(item => {\n  const json = item.json;\n  const filename = `episode_it_${json.id}_${new Date().getTime()}.wav`;\n  let dialogues = [];\n  try {\n    const parsed = JSON.parse(json.script);\n    dialogues = parsed.dialogues || [];\n  } catch(e) {\n    const parts = json.script.split('\\n\\n');\n    for (const part of parts) {\n      if (part.trim().length > 0) {\n        dialogues.push({ speaker: 'Host', text: part.trim() });\n      }\n    }\n  }\n  return {\n    json: {\n      script: dialogues,\n      language: 'it',\n      filename: filename,\n      episode_id: json.id\n    }\n  };\n});"
+      },
+      "id": "f48e3da9-992c-49",
+      "name": "Build Payload (Italian)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://webhook-app:8080/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "retryOnFail": true,
+          "maxTries": 3,
+          "waitBetweenTries": 5000
+        }
+      },
+      "id": "22b4b37c-8b9a-45",
+      "name": "Generate TTS (Italian)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (Italian)').item.json.episode_id }};"
+      },
+      "id": "5ddc095d-db88-4e",
+      "name": "Update Episode (Italian)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1250,
+        350
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst targetLang = 'fr';\n\nreturn items.filter(item => {\n  const lang = item.json.language;\n  return lang && lang.toLowerCase().substring(0,2) === targetLang.toLowerCase().substring(0,2);\n}).map(item => {\n  const json = item.json;\n  const filename = `episode_fr_${json.id}_${new Date().getTime()}.wav`;\n  let dialogues = [];\n  try {\n    const parsed = JSON.parse(json.script);\n    dialogues = parsed.dialogues || [];\n  } catch(e) {\n    const parts = json.script.split('\\n\\n');\n    for (const part of parts) {\n      if (part.trim().length > 0) {\n        dialogues.push({ speaker: 'Host', text: part.trim() });\n      }\n    }\n  }\n  return {\n    json: {\n      script: dialogues,\n      language: 'fr',\n      filename: filename,\n      episode_id: json.id\n    }\n  };\n});"
+      },
+      "id": "1b2f4fcc-6234-4a",
+      "name": "Build Payload (French)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://webhook-app:8080/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "retryOnFail": true,
+          "maxTries": 3,
+          "waitBetweenTries": 5000
+        }
+      },
+      "id": "295c2c24-dc5e-41",
+      "name": "Generate TTS (French)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (French)').item.json.episode_id }};"
+      },
+      "id": "650f0037-f9df-44",
+      "name": "Update Episode (French)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1250,
+        600
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.all();\nconst targetLang = 'bn';\n\nreturn items.filter(item => {\n  const lang = item.json.language;\n  return lang && lang.toLowerCase().substring(0,2) === targetLang.toLowerCase().substring(0,2);\n}).map(item => {\n  const json = item.json;\n  const filename = `episode_bn_${json.id}_${new Date().getTime()}.wav`;\n  let dialogues = [];\n  try {\n    const parsed = JSON.parse(json.script);\n    dialogues = parsed.dialogues || [];\n  } catch(e) {\n    const parts = json.script.split('\\n\\n');\n    for (const part of parts) {\n      if (part.trim().length > 0) {\n        dialogues.push({ speaker: 'Host', text: part.trim() });\n      }\n    }\n  }\n  return {\n    json: {\n      script: dialogues,\n      language: 'bn',\n      filename: filename,\n      episode_id: json.id\n    }\n  };\n});"
+      },
+      "id": "fd44a3b3-6bd9-41",
+      "name": "Build Payload (Bangla)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        700,
+        850
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://webhook-app:8080/tts",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "retryOnFail": true,
+          "maxTries": 3,
+          "waitBetweenTries": 5000
+        }
+      },
+      "id": "ebf05bcc-85fa-4a",
+      "name": "Generate TTS (Bangla)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1000,
+        850
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (Bangla)').item.json.episode_id }};"
+      },
+      "id": "8077d70f-397b-40",
+      "name": "Update Episode (Bangla)",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        1250,
+        850
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Every Hour": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Manual Run": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Configuration": {
+      "main": [
+        [
+          {
+            "node": "Postgres: Read Latest Scripts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Read Latest Scripts": {
+      "main": [
+        [
+          {
+            "node": "Build Payload (English)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Payload (Italian)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Payload (French)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Build Payload (Bangla)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Payload (English)": {
+      "main": [
+        [
+          {
+            "node": "Generate TTS (English)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate TTS (English)": {
+      "main": [
+        [
+          {
+            "node": "Update Episode (English)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Payload (Italian)": {
+      "main": [
+        [
+          {
+            "node": "Generate TTS (Italian)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate TTS (Italian)": {
+      "main": [
+        [
+          {
+            "node": "Update Episode (Italian)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Payload (French)": {
+      "main": [
+        [
+          {
+            "node": "Generate TTS (French)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate TTS (French)": {
+      "main": [
+        [
+          {
+            "node": "Update Episode (French)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Payload (Bangla)": {
+      "main": [
+        [
+          {
+            "node": "Generate TTS (Bangla)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate TTS (Bangla)": {
+      "main": [
+        [
+          {
+            "node": "Update Episode (Bangla)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "id": "VoiceScribeAudioEngine",
+  "name": "VoiceScribe - Audio Render Engine",
+  "active": true
+}
