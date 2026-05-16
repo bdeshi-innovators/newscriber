@@ -118,6 +118,7 @@ The system is built on a modern, containerized stack designed for reliability an
 | **n8n in the stack (not yet wired)**                | Visual workflow editor for the news pipeline → non-engineers can iterate on prompt/source/cadence without code deploys.   |
 | **Mock MP3 URL in V1**                              | Decouples onboarding from the audio pipeline so we ship onboarding before TTS exists. The URL is the seam.                |
 | **`_data/` bind mounts under compose project namespace** | Host-visible data, no Go-package-walker collisions, no container-name collisions with other projects.                |
+| **Multi-call TTS per dialogue**                     | Allows switching voices (Host/Guest) per line. PCM concatenation ensures zero-gap audio while bypassing API character limits. |
 | **`.env` via Compose `env_file:`**                  | Secrets live outside source; new keys (Twilio token, Meta secret, R2 creds…) flow into the container with no compose edit. |
 
 

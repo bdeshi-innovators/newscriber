@@ -8,6 +8,11 @@
         reverse_proxy webhook-app:8080
     }
 
+    # Minio Storage
+    handle_path /storage/* {
+        reverse_proxy minio:9000
+    }
+
     # n8n
     handle {
         reverse_proxy n8n:5678 {

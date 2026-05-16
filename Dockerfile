@@ -10,7 +10,7 @@ ENV CGO_ENABLED=0 GOOS=linux
 RUN go build -trimpath -ldflags="-s -w" -o /out/webhook ./cmd/webhook
 
 FROM alpine:3.20
-RUN apk add --no-cache ca-certificates
+RUN apk add --no-cache ca-certificates ffmpeg
 WORKDIR /app
 COPY --from=build /out/webhook /app/webhook
 EXPOSE 8080

@@ -38,7 +38,9 @@ CREATE TABLE IF NOT EXISTS news_items (
     skipped_at      TIMESTAMPTZ,                     -- set if article was rejected by agent
     translated_at   TIMESTAMPTZ,                     -- set when downstream finishes translating
     tts_at          TIMESTAMPTZ,                     -- set when MP3 is uploaded
-    mp3_url         TEXT,                            -- public URL for WhatsApp media
+    mp3_url         TEXT,                            -- public URL for WhatsApp media (MP3)
+    ogg_url         TEXT,                            -- public URL for WhatsApp media (OGG)
+    wav_url         TEXT,                            -- public URL for WhatsApp media (WAV)
     broadcast_at    TIMESTAMPTZ                      -- set when /broadcast fans out
 );
 CREATE INDEX IF NOT EXISTS news_items_unsent
@@ -55,8 +57,16 @@ CREATE TABLE IF NOT EXISTS episodes (
     source_names TEXT[]       NOT NULL DEFAULT '{}',
     created_at   TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     tts_at       TIMESTAMPTZ,             -- set when MP3 is generated (Step 3)
-    mp3_url      TEXT                     -- set when MP3 is uploaded (Step 3)
+    mp3_url      TEXT,                    -- set when MP3 is uploaded (Step 3)
+    ogg_url      TEXT,
+    wav_url      TEXT
 );
+
+-- Ensure columns exist in case tables were already created
+ALTER TABLE news_items ADD COLUMN IF NOT EXISTS ogg_url TEXT;
+ALTER TABLE news_items ADD COLUMN IF NOT EXISTS wav_url TEXT;
+ALTER TABLE episodes ADD COLUMN IF NOT EXISTS ogg_url TEXT;
+ALTER TABLE episodes ADD COLUMN IF NOT EXISTS wav_url TEXT;
 `
 
 func Migrate(ctx context.Context, conn *sql.DB) error {

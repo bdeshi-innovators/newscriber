@@ -34,12 +34,12 @@ func (h *Handler) HandleTTS(w http.ResponseWriter, r *http.Request) {
 		payload.Language = "en"
 	}
 
-	url, err := h.tts.GenerateAndUpload(r.Context(), payload.Language, payload.Script, payload.Filename)
+	results, err := h.tts.GenerateAndUpload(r.Context(), payload.Language, payload.Script, payload.Filename)
 	if err != nil {
 		http.Error(w, "tts failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	_ = json.NewEncoder(w).Encode(map[string]string{"url": url})
+	_ = json.NewEncoder(w).Encode(results)
 }

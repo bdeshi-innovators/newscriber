@@ -174,7 +174,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (English)').item.json.episode_id }};"
+        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.mp3_url }}', ogg_url = '{{ $json.ogg_url }}', wav_url = '{{ $json.wav_url }}' WHERE id = {{ $('Build Payload (English)').item.json.episode_id }};"
       },
       "id": "4870d78b-f540-4d",
       "name": "Update Episode (English)",
@@ -229,7 +229,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (Italian)').item.json.episode_id }};"
+        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.mp3_url }}', ogg_url = '{{ $json.ogg_url }}', wav_url = '{{ $json.wav_url }}' WHERE id = {{ $('Build Payload (Italian)').item.json.episode_id }};"
       },
       "id": "cd83e92e-cc6f-4a",
       "name": "Update Episode (Italian)",
@@ -284,7 +284,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (French)').item.json.episode_id }};"
+        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.mp3_url }}', ogg_url = '{{ $json.ogg_url }}', wav_url = '{{ $json.wav_url }}' WHERE id = {{ $('Build Payload (French)').item.json.episode_id }};"
       },
       "id": "273af360-b3fa-4d",
       "name": "Update Episode (French)",
@@ -339,7 +339,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (Bangla)').item.json.episode_id }};"
+        "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.mp3_url }}', ogg_url = '{{ $json.ogg_url }}', wav_url = '{{ $json.wav_url }}' WHERE id = {{ $('Build Payload (Bangla)').item.json.episode_id }};"
       },
       "id": "e2eb65ec-81c0-49",
       "name": "Update Episode (Bangla)",
