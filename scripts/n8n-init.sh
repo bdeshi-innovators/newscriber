@@ -46,6 +46,9 @@ rm -f /tmp/n8n-creds.json
 echo "Importing workflows..."
 if [ -d "/workflows" ]; then
   n8n import:workflow --separate --input=/workflows || echo "Warning: Workflow import failed."
+  # Activate imported workflows by ID
+  n8n update:workflow --id=VoiceScribeAudioEngine --active=true || echo "Warning: Audio Render Engine activation failed."
+  n8n update:workflow --id=VoiceScribeV4 --active=true || echo "Warning: News Pipeline activation failed."
 fi
 
 echo "Initialization complete. Starting n8n..."

@@ -6,50 +6,122 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 * * * *"
+              "expression": "0 7,13,19 * * *"
             }
           ]
+        },
+        "options": {
+          "timezone": "Europe/London"
         }
       },
-      "id": "4d320231-36fa-4a",
-      "name": "Every Hour",
+      "id": "0e99873a-2a13-48",
+      "name": "London Schedule (EN)",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
       "position": [
-        0,
-        100
+        -200,
+        0
       ]
     },
     {
-      "parameters": {},
-      "id": "b6fb36b4-d447-49",
-      "name": "Manual Run",
-      "type": "n8n-nodes-base.manualTrigger",
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7,13,19 * * *"
+            }
+          ]
+        },
+        "options": {
+          "timezone": "Europe/Rome"
+        }
+      },
+      "id": "010cc69d-4db5-4e",
+      "name": "Rome Schedule (IT)",
+      "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
       "position": [
-        0,
+        -200,
+        150
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7,13,19 * * *"
+            }
+          ]
+        },
+        "options": {
+          "timezone": "Europe/Paris"
+        }
+      },
+      "id": "1eb6cd23-bd5a-46",
+      "name": "Paris Schedule (FR)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -200,
         300
       ]
     },
     {
       "parameters": {
-        "jsCode": "return [ { json: { force: false } } ];"
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7,13,19 * * *"
+            }
+          ]
+        },
+        "options": {
+          "timezone": "Asia/Dhaka"
+        }
       },
-      "id": "0a6a3bd6-6331-43",
+      "id": "cc155648-3d03-47",
+      "name": "Dhaka Schedule (BN)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        450
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "79b1f3cf-2efd-4e",
+      "name": "Manual Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -200,
+        600
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [ { json: { force: true } } ];"
+      },
+      "id": "26d91965-d4f7-4a",
       "name": "Configuration",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        200,
-        200
+        100,
+        300
       ]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT id, language, script FROM episodes WHERE ({{ $json.force }} = true OR tts_at IS NULL) ORDER BY created_at DESC LIMIT 10;"
+        "query": "=SELECT id, language, script FROM episodes WHERE ({{ $json.force ? 'TRUE' : 'tts_at IS NULL' }}) ORDER BY created_at DESC LIMIT 10;"
       },
-      "id": "aba6016a-4106-4b",
+      "id": "daab0b85-49a5-46",
       "name": "Postgres: Read Latest Scripts",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
@@ -68,7 +140,7 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nconst targetLang = 'en';\n\nreturn items.filter(item => {\n  const lang = item.json.language;\n  return lang && lang.toLowerCase().substring(0,2) === targetLang.toLowerCase().substring(0,2);\n}).map(item => {\n  const json = item.json;\n  const filename = `episode_en_${json.id}_${new Date().getTime()}.wav`;\n  let dialogues = [];\n  try {\n    const parsed = JSON.parse(json.script);\n    dialogues = parsed.dialogues || [];\n  } catch(e) {\n    const parts = json.script.split('\\n\\n');\n    for (const part of parts) {\n      if (part.trim().length > 0) {\n        dialogues.push({ speaker: 'Host', text: part.trim() });\n      }\n    }\n  }\n  return {\n    json: {\n      script: dialogues,\n      language: 'en',\n      filename: filename,\n      episode_id: json.id\n    }\n  };\n});"
       },
-      "id": "aa5748ec-8c71-41",
+      "id": "2db05167-5780-4b",
       "name": "Build Payload (English)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -90,7 +162,7 @@
           "waitBetweenTries": 5000
         }
       },
-      "id": "2451f81d-750f-45",
+      "id": "56ebe82b-2277-45",
       "name": "Generate TTS (English)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -104,7 +176,7 @@
         "operation": "executeQuery",
         "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (English)').item.json.episode_id }};"
       },
-      "id": "1c738d88-b6f7-42",
+      "id": "4870d78b-f540-4d",
       "name": "Update Episode (English)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
@@ -123,7 +195,7 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nconst targetLang = 'it';\n\nreturn items.filter(item => {\n  const lang = item.json.language;\n  return lang && lang.toLowerCase().substring(0,2) === targetLang.toLowerCase().substring(0,2);\n}).map(item => {\n  const json = item.json;\n  const filename = `episode_it_${json.id}_${new Date().getTime()}.wav`;\n  let dialogues = [];\n  try {\n    const parsed = JSON.parse(json.script);\n    dialogues = parsed.dialogues || [];\n  } catch(e) {\n    const parts = json.script.split('\\n\\n');\n    for (const part of parts) {\n      if (part.trim().length > 0) {\n        dialogues.push({ speaker: 'Host', text: part.trim() });\n      }\n    }\n  }\n  return {\n    json: {\n      script: dialogues,\n      language: 'it',\n      filename: filename,\n      episode_id: json.id\n    }\n  };\n});"
       },
-      "id": "f48e3da9-992c-49",
+      "id": "3dad995c-a5d4-48",
       "name": "Build Payload (Italian)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -145,7 +217,7 @@
           "waitBetweenTries": 5000
         }
       },
-      "id": "22b4b37c-8b9a-45",
+      "id": "f5acb07d-61b9-49",
       "name": "Generate TTS (Italian)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -159,7 +231,7 @@
         "operation": "executeQuery",
         "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (Italian)').item.json.episode_id }};"
       },
-      "id": "5ddc095d-db88-4e",
+      "id": "cd83e92e-cc6f-4a",
       "name": "Update Episode (Italian)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
@@ -178,7 +250,7 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nconst targetLang = 'fr';\n\nreturn items.filter(item => {\n  const lang = item.json.language;\n  return lang && lang.toLowerCase().substring(0,2) === targetLang.toLowerCase().substring(0,2);\n}).map(item => {\n  const json = item.json;\n  const filename = `episode_fr_${json.id}_${new Date().getTime()}.wav`;\n  let dialogues = [];\n  try {\n    const parsed = JSON.parse(json.script);\n    dialogues = parsed.dialogues || [];\n  } catch(e) {\n    const parts = json.script.split('\\n\\n');\n    for (const part of parts) {\n      if (part.trim().length > 0) {\n        dialogues.push({ speaker: 'Host', text: part.trim() });\n      }\n    }\n  }\n  return {\n    json: {\n      script: dialogues,\n      language: 'fr',\n      filename: filename,\n      episode_id: json.id\n    }\n  };\n});"
       },
-      "id": "1b2f4fcc-6234-4a",
+      "id": "1c82afa6-15e8-41",
       "name": "Build Payload (French)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -200,7 +272,7 @@
           "waitBetweenTries": 5000
         }
       },
-      "id": "295c2c24-dc5e-41",
+      "id": "b27ee375-9273-48",
       "name": "Generate TTS (French)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -214,7 +286,7 @@
         "operation": "executeQuery",
         "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (French)').item.json.episode_id }};"
       },
-      "id": "650f0037-f9df-44",
+      "id": "273af360-b3fa-4d",
       "name": "Update Episode (French)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
@@ -233,7 +305,7 @@
       "parameters": {
         "jsCode": "const items = $input.all();\nconst targetLang = 'bn';\n\nreturn items.filter(item => {\n  const lang = item.json.language;\n  return lang && lang.toLowerCase().substring(0,2) === targetLang.toLowerCase().substring(0,2);\n}).map(item => {\n  const json = item.json;\n  const filename = `episode_bn_${json.id}_${new Date().getTime()}.wav`;\n  let dialogues = [];\n  try {\n    const parsed = JSON.parse(json.script);\n    dialogues = parsed.dialogues || [];\n  } catch(e) {\n    const parts = json.script.split('\\n\\n');\n    for (const part of parts) {\n      if (part.trim().length > 0) {\n        dialogues.push({ speaker: 'Host', text: part.trim() });\n      }\n    }\n  }\n  return {\n    json: {\n      script: dialogues,\n      language: 'bn',\n      filename: filename,\n      episode_id: json.id\n    }\n  };\n});"
       },
-      "id": "fd44a3b3-6bd9-41",
+      "id": "fe4728bd-8c11-45",
       "name": "Build Payload (Bangla)",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
@@ -255,7 +327,7 @@
           "waitBetweenTries": 5000
         }
       },
-      "id": "ebf05bcc-85fa-4a",
+      "id": "e0ee2efa-d68f-4b",
       "name": "Generate TTS (Bangla)",
       "type": "n8n-nodes-base.httpRequest",
       "typeVersion": 4.2,
@@ -269,7 +341,7 @@
         "operation": "executeQuery",
         "query": "=UPDATE episodes SET tts_at = NOW(), mp3_url = '{{ $json.url }}' WHERE id = {{ $('Build Payload (Bangla)').item.json.episode_id }};"
       },
-      "id": "8077d70f-397b-40",
+      "id": "e2eb65ec-81c0-49",
       "name": "Update Episode (Bangla)",
       "type": "n8n-nodes-base.postgres",
       "typeVersion": 2.4,
@@ -286,7 +358,40 @@
     }
   ],
   "connections": {
-    "Every Hour": {
+    "London Schedule (EN)": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rome Schedule (IT)": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Paris Schedule (FR)": {
+      "main": [
+        [
+          {
+            "node": "Configuration",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dhaka Schedule (BN)": {
       "main": [
         [
           {

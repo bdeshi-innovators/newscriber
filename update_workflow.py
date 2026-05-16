@@ -7,22 +7,86 @@ def node_id():
 # Initialize the workflow structure
 workflow = {
   "nodes": [
+    # Cron triggers for each region at Breakfast, Lunch, and Dinner
     {
       "parameters": {
         "rule": {
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 * * * *"
+              "expression": "0 7,13,19 * * *"
             }
           ]
+        },
+        "options": {
+          "timezone": "Europe/London"
         }
       },
       "id": node_id(),
-      "name": "Every Hour",
+      "name": "London Schedule (EN)",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
-      "position": [0, 100]
+      "position": [-200, 0]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7,13,19 * * *"
+            }
+          ]
+        },
+        "options": {
+          "timezone": "Europe/Rome"
+        }
+      },
+      "id": node_id(),
+      "name": "Rome Schedule (IT)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [-200, 150]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7,13,19 * * *"
+            }
+          ]
+        },
+        "options": {
+          "timezone": "Europe/Paris"
+        }
+      },
+      "id": node_id(),
+      "name": "Paris Schedule (FR)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [-200, 300]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 7,13,19 * * *"
+            }
+          ]
+        },
+        "options": {
+          "timezone": "Asia/Dhaka"
+        }
+      },
+      "id": node_id(),
+      "name": "Dhaka Schedule (BN)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [-200, 450]
     },
     {
       "parameters": {},
@@ -30,22 +94,22 @@ workflow = {
       "name": "Manual Run",
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
-      "position": [0, 300]
+      "position": [-200, 600]
     },
     {
       "parameters": {
-        "jsCode": "return [ { json: { force: false } } ];"
+        "jsCode": "return [ { json: { force: true } } ];"
       },
       "id": node_id(),
       "name": "Configuration",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
-      "position": [200, 200]
+      "position": [100, 300]
     },
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT id, language, script FROM episodes WHERE ({{ $json.force }} = true OR tts_at IS NULL) ORDER BY created_at DESC LIMIT 10;"
+        "query": "=SELECT id, language, script FROM episodes WHERE ({{ $json.force ? 'TRUE' : 'tts_at IS NULL' }}) ORDER BY created_at DESC LIMIT 10;"
       },
       "id": node_id(),
       "name": "Postgres: Read Latest Scripts",
@@ -61,25 +125,26 @@ workflow = {
     }
   ],
   "connections": {
-    "Every Hour": {
-      "main": [
-        [{"node": "Configuration", "type": "main", "index": 0}]
-      ]
+    "London Schedule (EN)": {
+      "main": [[{"node": "Configuration", "type": "main", "index": 0}]]
+    },
+    "Rome Schedule (IT)": {
+      "main": [[{"node": "Configuration", "type": "main", "index": 0}]]
+    },
+    "Paris Schedule (FR)": {
+      "main": [[{"node": "Configuration", "type": "main", "index": 0}]]
+    },
+    "Dhaka Schedule (BN)": {
+      "main": [[{"node": "Configuration", "type": "main", "index": 0}]]
     },
     "Manual Run": {
-      "main": [
-        [{"node": "Configuration", "type": "main", "index": 0}]
-      ]
+      "main": [[{"node": "Configuration", "type": "main", "index": 0}]]
     },
     "Configuration": {
-      "main": [
-        [{"node": "Postgres: Read Latest Scripts", "type": "main", "index": 0}]
-      ]
+      "main": [[{"node": "Postgres: Read Latest Scripts", "type": "main", "index": 0}]]
     },
     "Postgres: Read Latest Scripts": {
-      "main": [
-        []
-      ]
+      "main": [[]]
     }
   },
   "settings": {
