@@ -77,6 +77,10 @@
 | Dockerfile | ✅ Done | `Dockerfile` |
 | `.env` / `.env.example` configuration | ✅ Done | All required vars documented |
 | Cloudflare R2 bucket + public URL | ❌ Missing | No R2 credentials or client wired up |
+| **HTTPS / TLS** | ❌ Missing | Currently serving over HTTP on IP; needs domain + Caddy SSL |
+| **Internal service isolation** | ✅ Done | Services restricted to `voicescribe-net` docker network |
+| **Host port hardening** | ❌ Missing | DB and n8n ports still bound to `0.0.0.0` in `docker-compose.yml` |
+| **Webhook Signature Validation** | ❌ Missing | No logic to verify Twilio/Meta signatures yet |
 
 ---
 
@@ -126,3 +130,10 @@
 - [ ] Replace hardcoded source list Code node with Google Sheets node
 - [ ] RSS fallback scraping if Firecrawl fails
 - [ ] `news_items` `translated_at` / `tts_at` / `broadcast_at` lifecycle stamping (schema ready, no writer yet)
+
+### 🔒 Security & Deployment Hardening
+
+- [ ] **Attach Domain Name** — Redirect traffic to `voicescribe.yourdomain.com`.
+- [ ] **Enable HTTPS** — Update Caddyfile to use the domain and trigger Let's Encrypt.
+- [ ] **Restrict Docker Ports** — Change `ports:` to `127.0.0.1:15678:5678` for n8n/DB.
+- [ ] **Implement Webhook Verification** — Reject unauthenticated requests from Twilio/Meta.

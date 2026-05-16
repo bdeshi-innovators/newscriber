@@ -1,3 +1,7 @@
+# To enable HTTPS:
+# 1. Replace ':80' with your domain name (e.g., api.voicescribe.com)
+# 2. Ensure your domain points to this server's public IP.
+# 3. Caddy will automatically handle Let's Encrypt certificates.
 :80 {
     # Webhook App
     handle_path /api/webhook/* {
