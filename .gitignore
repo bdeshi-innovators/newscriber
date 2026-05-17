@@ -1,6 +1,7 @@
 /_data/
 /.firecrawl/
 .env
+.env.production
 *.exe
 *.test
 *.out

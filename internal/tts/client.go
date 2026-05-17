@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"os/exec"
 	"strings"
 	"time"
@@ -20,6 +21,7 @@ type Client struct {
 	s3Client      *minio.Client
 	bucketName    string
 	publicURL     string
+	isDirect      bool
 }
 
 type TTSResults struct {
@@ -53,6 +55,10 @@ func PcmToFormat(pcm []byte, format string) ([]byte, error) {
 }
 
 func NewClient(openRouterKey, endpoint, accessKey, secretKey, bucketName, publicURL string) (*Client, error) {
+	// Trim protocol prefix if present (e.g. from Cloudflare R2 endpoint URL)
+	endpoint = strings.TrimPrefix(endpoint, "https://")
+	endpoint = strings.TrimPrefix(endpoint, "http://")
+
 	// Use SSL if not localhost or minio container name
 	useSSL := !isLocal(endpoint)
 
@@ -64,11 +70,14 @@ func NewClient(openRouterKey, endpoint, accessKey, secretKey, bucketName, public
 		return nil, fmt.Errorf("init s3 client: %w", err)
 	}
 
+	isDirect := os.Getenv("STORAGE_PUBLIC_URL_IS_DIRECT") == "true"
+
 	return &Client{
 		openRouterKey: openRouterKey,
 		s3Client:      s3Client,
 		bucketName:    bucketName,
 		publicURL:     publicURL,
+		isDirect:      isDirect,
 	}, nil
 }
 
@@ -210,6 +219,9 @@ func (c *Client) upload(ctx context.Context, filename string, data []byte, conte
 	})
 	if err != nil {
 		return "", err
+	}
+	if c.isDirect {
+		return fmt.Sprintf("%s/%s", strings.TrimSuffix(c.publicURL, "/"), filename), nil
 	}
 	return fmt.Sprintf("%s/%s/%s", strings.TrimSuffix(c.publicURL, "/"), c.bucketName, filename), nil
 }

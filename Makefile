@@ -74,11 +74,10 @@ deploy:
 		--exclude '.firecrawl/' \
 		--exclude 'newscribe.pem' \
 		--exclude '.env' \
+		--exclude '.env.production' \
 		./ $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_DIR)/
-	# Push patched .env
-	sed "s/localhost/$(REMOTE_HOST)/g" .env > .env.remote
-	scp -i $(SSH_KEY) -o StrictHostKeyChecking=no .env.remote $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_DIR)/.env
-	rm .env.remote
+	# Push production-specific .env
+	scp -i $(SSH_KEY) -o StrictHostKeyChecking=no .env.production $(REMOTE_USER)@$(REMOTE_HOST):$(REMOTE_DIR)/.env
 	# Trigger remote docker-compose up
 	ssh -i $(SSH_KEY) -o StrictHostKeyChecking=no $(REMOTE_USER)@$(REMOTE_HOST) \
 		"cd $(REMOTE_DIR) && docker compose up -d --build"
