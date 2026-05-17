@@ -77,11 +77,22 @@ return fmt.Errorf("init tts client: %w", err)
 }
 
 	repo := users.NewPgUserRepository(conn)
-	handler := webhook.NewHandler(repo, ttsClient)
+	handler := webhook.NewHandler(repo, ttsClient, conn)
 
 	mux := http.NewServeMux()
 	mux.Handle("/webhook/whatsapp", handler)
 	mux.HandleFunc("/tts", handler.HandleTTS)
+	mux.HandleFunc("/rss/generate", func(w http.ResponseWriter, r *http.Request) {
+		for _, lang := range []string{"en", "it", "fr", "bn"} {
+			if err := handler.UpdateRSSFeed(r.Context(), lang); err != nil {
+				slog.Error("failed manual RSS feed generation", "lang", lang, "err", err)
+				http.Error(w, "failed for "+lang+": "+err.Error(), http.StatusInternalServerError)
+				return
+			}
+		}
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("all RSS feeds successfully generated and uploaded to R2!"))
+	})
 	mux.HandleFunc("/healthz", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		_, _ = w.Write([]byte("ok"))

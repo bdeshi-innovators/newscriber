@@ -225,3 +225,7 @@ func (c *Client) upload(ctx context.Context, filename string, data []byte, conte
 	}
 	return fmt.Sprintf("%s/%s/%s", strings.TrimSuffix(c.publicURL, "/"), c.bucketName, filename), nil
 }
+
+func (c *Client) UploadXML(ctx context.Context, filename string, data []byte) (string, error) {
+	return c.upload(ctx, filename, data, "application/xml")
+}

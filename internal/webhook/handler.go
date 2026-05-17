@@ -1,6 +1,7 @@
 package webhook
 
 import (
+	"database/sql"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
@@ -25,12 +26,14 @@ const (
 type Handler struct {
 	repo users.UserRepository
 	tts  *tts.Client
+	db   *sql.DB
 }
 
-func NewHandler(repo users.UserRepository, ttsClient *tts.Client) *Handler {
+func NewHandler(repo users.UserRepository, ttsClient *tts.Client, db *sql.DB) *Handler {
 	return &Handler{
 		repo: repo,
 		tts:  ttsClient,
+		db:   db,
 	}
 }
 

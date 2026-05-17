@@ -45,7 +45,7 @@ func newMetaRequest(t *testing.T, from, body string) *http.Request {
 
 func TestHandler_UnknownPhone_ReturnsWelcomeMenu(t *testing.T) {
 	repo := users.NewInMemoryUserRepository()
-	h := webhook.NewHandler(repo, nil)
+	h := webhook.NewHandler(repo, nil, nil)
 
 	req := newTwilioRequest(t, "whatsapp:+391112223333", "hello")
 	rr := httptest.NewRecorder()
@@ -66,7 +66,7 @@ func TestHandler_UnknownPhone_ReturnsWelcomeMenu(t *testing.T) {
 func TestHandler_GetNewsMixedCase_ReturnsWelcomeMenu(t *testing.T) {
 	repo := users.NewInMemoryUserRepository()
 	_ = repo.UpsertUser(context.Background(), "+391112223333", "en")
-	h := webhook.NewHandler(repo, nil)
+	h := webhook.NewHandler(repo, nil, nil)
 
 	req := newTwilioRequest(t, "whatsapp:+391112223333", "GeT NeWs")
 	rr := httptest.NewRecorder()
@@ -89,7 +89,7 @@ func TestHandler_LanguageSelection(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.input, func(t *testing.T) {
 			repo := users.NewInMemoryUserRepository()
-			h := webhook.NewHandler(repo, nil)
+			h := webhook.NewHandler(repo, nil, nil)
 
 			req := newTwilioRequest(t, "whatsapp:+391112223333", tc.input)
 			rr := httptest.NewRecorder()
@@ -120,7 +120,7 @@ func TestHandler_LanguageSelection(t *testing.T) {
 func TestHandler_ExistingUserFreeText_ReturnsReminder(t *testing.T) {
 	repo := users.NewInMemoryUserRepository()
 	_ = repo.UpsertUser(context.Background(), "+391112223333", "it")
-	h := webhook.NewHandler(repo, nil)
+	h := webhook.NewHandler(repo, nil, nil)
 
 	req := newTwilioRequest(t, "whatsapp:+391112223333", "ciao")
 	rr := httptest.NewRecorder()
@@ -139,7 +139,7 @@ func TestHandler_ExistingUserFreeText_ReturnsReminder(t *testing.T) {
 
 func TestHandler_UnsupportedContentType_Returns400(t *testing.T) {
 	repo := users.NewInMemoryUserRepository()
-	h := webhook.NewHandler(repo, nil)
+	h := webhook.NewHandler(repo, nil, nil)
 
 	req := httptest.NewRequest(http.MethodPost, "/webhook/whatsapp", strings.NewReader("anything"))
 	req.Header.Set("Content-Type", "text/plain")
@@ -153,7 +153,7 @@ func TestHandler_UnsupportedContentType_Returns400(t *testing.T) {
 
 func TestHandler_MetaJSONFlow(t *testing.T) {
 	repo := users.NewInMemoryUserRepository()
-	h := webhook.NewHandler(repo, nil)
+	h := webhook.NewHandler(repo, nil, nil)
 
 	req := newMetaRequest(t, "391112223333", "1")
 	rr := httptest.NewRecorder()
@@ -181,7 +181,7 @@ func TestHandler_MetaJSONFlow(t *testing.T) {
 
 func TestHandler_TwilioReplyIsTwiML(t *testing.T) {
 	repo := users.NewInMemoryUserRepository()
-	h := webhook.NewHandler(repo, nil)
+	h := webhook.NewHandler(repo, nil, nil)
 
 	req := newTwilioRequest(t, "whatsapp:+391112223333", "1")
 	rr := httptest.NewRecorder()

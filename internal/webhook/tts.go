@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"voicescribe-webhook/internal/tts"
@@ -38,6 +39,11 @@ func (h *Handler) HandleTTS(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "tts failed: "+err.Error(), http.StatusInternalServerError)
 		return
+	}
+
+	// NEW: Auto-maintain the podcast RSS .xml feed in Cloudflare R2!
+	if err := h.UpdateRSSFeed(r.Context(), payload.Language); err != nil {
+		slog.Error("failed to automatically update RSS feed", "lang", payload.Language, "err", err)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
