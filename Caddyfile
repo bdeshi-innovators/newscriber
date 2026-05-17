@@ -8,9 +8,11 @@ newscriber.unityflow.ai {
         reverse_proxy webhook-app:8080
     }
 
-    # Minio Storage
+    # Storage Proxy (Minio locally, Cloudflare R2 in prod)
     handle_path /storage/* {
-        reverse_proxy {$STORAGE_UPSTREAM:minio:9000}
+        reverse_proxy {$STORAGE_UPSTREAM:minio:9000} {
+            header_up Host {$STORAGE_HOST:minio:9000}
+        }
     }
 
     # n8n

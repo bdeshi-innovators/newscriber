@@ -79,6 +79,9 @@ services:
     - 80:80
     - 443:443
     - "443:443/udp"
+    environment:
+      STORAGE_UPSTREAM: ${STORAGE_UPSTREAM}
+      STORAGE_HOST: ${STORAGE_HOST}
     volumes:
     - ./Caddyfile:/etc/caddy/Caddyfile
     - caddy_data:/data
