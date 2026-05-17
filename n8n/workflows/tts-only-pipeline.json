@@ -362,7 +362,7 @@
       "main": [
         [
           {
-            "node": "Configuration",
+            "node": "Postgres: Read Latest Scripts",
             "type": "main",
             "index": 0
           }
@@ -373,7 +373,7 @@
       "main": [
         [
           {
-            "node": "Configuration",
+            "node": "Postgres: Read Latest Scripts",
             "type": "main",
             "index": 0
           }
@@ -384,7 +384,7 @@
       "main": [
         [
           {
-            "node": "Configuration",
+            "node": "Postgres: Read Latest Scripts",
             "type": "main",
             "index": 0
           }
@@ -395,7 +395,7 @@
       "main": [
         [
           {
-            "node": "Configuration",
+            "node": "Postgres: Read Latest Scripts",
             "type": "main",
             "index": 0
           }
