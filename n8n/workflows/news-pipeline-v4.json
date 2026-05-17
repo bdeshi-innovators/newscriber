@@ -18,18 +18,90 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "0 7,13,19 * * *"
+              "expression": "30 6,12,18 * * *"
             }
           ]
+        },
+        "options": {
+          "timezone": "Europe/London"
         }
       },
-      "id": "trig-cron-3x",
-      "name": "07:00, 13:00, 19:00",
+      "id": "trig-cron-london",
+      "name": "London Schedule (EN)",
       "type": "n8n-nodes-base.cron",
       "typeVersion": 1,
       "position": [
         -400,
-        300
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 6,12,18 * * *"
+            }
+          ]
+        },
+        "options": {
+          "timezone": "Europe/Rome"
+        }
+      },
+      "id": "trig-cron-rome",
+      "name": "Rome Schedule (IT)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 6,12,18 * * *"
+            }
+          ]
+        },
+        "options": {
+          "timezone": "Europe/Paris"
+        }
+      },
+      "id": "trig-cron-paris",
+      "name": "Paris Schedule (FR)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 6,12,18 * * *"
+            }
+          ]
+        },
+        "options": {
+          "timezone": "Asia/Dhaka"
+        }
+      },
+      "id": "trig-cron-dhaka",
+      "name": "Dhaka Schedule (BN)",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [
+        -400,
+        650
       ]
     },
     {
@@ -788,7 +860,40 @@
         ]
       ]
     },
-    "07:00, 13:00, 19:00": {
+    "London Schedule (EN)": {
+      "main": [
+        [
+          {
+            "node": "Source list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Rome Schedule (IT)": {
+      "main": [
+        [
+          {
+            "node": "Source list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Paris Schedule (FR)": {
+      "main": [
+        [
+          {
+            "node": "Source list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Dhaka Schedule (BN)": {
       "main": [
         [
           {
