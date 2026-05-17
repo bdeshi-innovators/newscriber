@@ -119,7 +119,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT id, language, script FROM episodes WHERE ({{ $json.force ? 'TRUE' : 'tts_at IS NULL' }}) ORDER BY created_at DESC LIMIT 10;"
+        "query": "=SELECT DISTINCT ON (language) id, language, script FROM episodes WHERE ({{ $json.force ? 'TRUE' : 'tts_at IS NULL' }}) ORDER BY language, created_at DESC;"
       },
       "id": "daab0b85-49a5-46",
       "name": "Postgres: Read Latest Scripts",
