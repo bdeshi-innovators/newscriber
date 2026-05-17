@@ -2,7 +2,7 @@
 # 1. Replace ':80' with your domain name (e.g., api.voicescribe.com)
 # 2. Ensure your domain points to this server's public IP.
 # 3. Caddy will automatically handle Let's Encrypt certificates.
-:80 {
+newscribe.unityflow.ai {
     # Webhook App
     handle_path /api/* {
         reverse_proxy webhook-app:8080
@@ -10,7 +10,7 @@
 
     # Minio Storage
     handle_path /storage/* {
-        reverse_proxy minio:9000
+        reverse_proxy {$STORAGE_UPSTREAM:minio:9000}
     }
 
     # n8n

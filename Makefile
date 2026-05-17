@@ -24,7 +24,7 @@ help:
 
 # Start all services
 up:
-	docker compose up -d
+	docker compose --profile local up -d
 
 # Stop and remove all containers
 down:
