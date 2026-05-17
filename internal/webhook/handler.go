@@ -1,12 +1,14 @@
 package webhook
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"encoding/xml"
 	"errors"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 
 	"voicescribe-webhook/internal/tts"
@@ -14,26 +16,34 @@ import (
 )
 
 const (
-	mockMP3URL = "https://voicescribe.example/audio/latest.mp3"
+	mockMP3URL = "https://newscriber.example/audio/latest.mp3"
 
-	welcomeMenu = "Welcome to VoiceScribe. Choose your language: \n1️⃣ English \n2️⃣ Italiano \n3️⃣ বাংলা"
+	welcomeMenu = "Welcome to NewScriber. Choose your language: \n1️⃣ English \n2️⃣ Italiano \n3️⃣ বাংলা"
 
 	confirmReplyTemplate = "You're set! Here is your latest update. Next drop in 2 hours. " + mockMP3URL
 
-	reminderReply = "Got it. Your next VoiceScribe drop arrives in ~2 hours."
+	reminderReply = "Got it. Your next NewScriber drop arrives in ~2 hours."
 )
 
 type Handler struct {
-	repo users.UserRepository
-	tts  *tts.Client
-	db   *sql.DB
+	repo                 users.UserRepository
+	tts                  *tts.Client
+	db                   *sql.DB
+	twilioAccountSID     string
+	twilioAuthToken      string
+	twilioWhatsAppNumber string
+	metaWhatsAppNumber   string
 }
 
 func NewHandler(repo users.UserRepository, ttsClient *tts.Client, db *sql.DB) *Handler {
 	return &Handler{
-		repo: repo,
-		tts:  ttsClient,
-		db:   db,
+		repo:                 repo,
+		tts:                  ttsClient,
+		db:                   db,
+		twilioAccountSID:     os.Getenv("TWILIO_ACCOUNT_SID"),
+		twilioAuthToken:      os.Getenv("TWILIO_AUTH_TOKEN"),
+		twilioWhatsAppNumber: os.Getenv("TWILIO_WHATSAPP_NUMBER"),
+		metaWhatsAppNumber:   os.Getenv("META_WHATSAPP_NUMBER"),
 	}
 }
 
@@ -70,7 +80,15 @@ func (h *Handler) decideReply(r *http.Request, msg InboundMessage) (string, erro
 		if err := h.repo.UpsertUser(r.Context(), msg.Phone, lang); err != nil {
 			return "", err
 		}
-		return confirmReplyTemplate, nil
+		// Query DB for the actual latest episode URL of this language
+		mp3URL, err := h.getLatestEpisodeMP3URL(r.Context(), lang)
+		if err != nil {
+			log.Printf("webhook: get latest episode MP3 from database: %v", err)
+		}
+		if mp3URL == "" {
+			mp3URL = mockMP3URL
+		}
+		return "You're set! Here is your latest update. Next drop in 2 hours. " + mp3URL, nil
 	}
 
 	user, err := h.repo.GetUser(r.Context(), msg.Phone)
@@ -83,6 +101,22 @@ func (h *Handler) decideReply(r *http.Request, msg InboundMessage) (string, erro
 	}
 
 	return reminderReply, nil
+}
+
+func (h *Handler) getLatestEpisodeMP3URL(ctx context.Context, lang string) (string, error) {
+	if h.db == nil {
+		return "", errors.New("database connection not available")
+	}
+	var mp3URL string
+	query := `SELECT mp3_url FROM episodes WHERE language = $1 ORDER BY created_at DESC LIMIT 1`
+	err := h.db.QueryRowContext(ctx, query, lang).Scan(&mp3URL)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return "", nil // No episodes generated yet
+		}
+		return "", err
+	}
+	return mp3URL, nil
 }
 
 func languageFromChoice(body string) (string, bool) {

@@ -76,6 +76,13 @@ if err != nil {
 return fmt.Errorf("init tts client: %w", err)
 }
 
+	slog.Info("newscriber: loading twilio & whatsapp environment configuration",
+		"twilio_account_sid_present", os.Getenv("TWILIO_ACCOUNT_SID") != "",
+		"twilio_auth_token_present", os.Getenv("TWILIO_AUTH_TOKEN") != "",
+		"twilio_whatsapp_number", os.Getenv("TWILIO_WHATSAPP_NUMBER"),
+		"meta_whatsapp_number", os.Getenv("META_WHATSAPP_NUMBER"),
+	)
+
 	repo := users.NewPgUserRepository(conn)
 	handler := webhook.NewHandler(repo, ttsClient, conn)
 

@@ -33,6 +33,10 @@ services:
       PORT: '8080'
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FORMAT: ${LOG_FORMAT:-json}
+      TWILIO_ACCOUNT_SID: ${TWILIO_ACCOUNT_SID:-}
+      TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
+      TWILIO_WHATSAPP_NUMBER: ${TWILIO_WHATSAPP_NUMBER:-}
+      META_WHATSAPP_NUMBER: ${META_WHATSAPP_NUMBER:-}
     depends_on:
       db:
         condition: service_healthy

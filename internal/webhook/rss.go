@@ -60,7 +60,7 @@ func (h *Handler) buildRSSXML(lang string, episodes []EpisodeRow) string {
 		langTitle = "Français"
 	}
 
-	title := fmt.Sprintf("VoiceScribe — %s Daily Briefing", langTitle)
+	title := fmt.Sprintf("NewScriber — %s Daily Briefing", langTitle)
 	description := fmt.Sprintf("Your high-fidelity automated bilingual news briefing in %s.", langTitle)
 	nowRFC := time.Now().Format(time.RFC1123Z)
 
@@ -73,10 +73,10 @@ func (h *Handler) buildRSSXML(lang string, episodes []EpisodeRow) string {
     <description>` + description + `</description>
     <link>https://newscriber.unityflow.ai</link>
     <language>` + lang + `</language>
-    <itunes:author>VoiceScribe AI</itunes:author>
+    <itunes:author>NewScriber AI</itunes:author>
     <itunes:summary>` + description + `</itunes:summary>
     <itunes:owner>
-      <itunes:name>VoiceScribe AI</itunes:name>
+      <itunes:name>NewScriber AI</itunes:name>
       <itunes:email>podcast@unityflow.ai</itunes:email>
     </itunes:owner>
     <itunes:explicit>no</itunes:explicit>
@@ -98,7 +98,7 @@ func (h *Handler) buildRSSXML(lang string, episodes []EpisodeRow) string {
 		}
 		
 		pubDate := ep.CreatedAt.Format(time.RFC1123Z)
-		epTitle := fmt.Sprintf("VoiceScribe %s - Episode #%d", langTitle, ep.ID)
+		epTitle := fmt.Sprintf("NewScriber %s - Episode #%d", langTitle, ep.ID)
 
 		xml += `    <item>
       <title>` + epTitle + `</title>

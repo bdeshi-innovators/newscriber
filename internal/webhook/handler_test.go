@@ -55,7 +55,7 @@ func TestHandler_UnknownPhone_ReturnsWelcomeMenu(t *testing.T) {
 		t.Fatalf("status: got %d want 200; body=%s", rr.Code, rr.Body.String())
 	}
 	body := rr.Body.String()
-	if !strings.Contains(body, "Welcome to VoiceScribe") {
+	if !strings.Contains(body, "Welcome to NewScriber") {
 		t.Errorf("expected welcome menu, got: %s", body)
 	}
 	if !strings.Contains(body, "1️⃣ English") {
@@ -72,7 +72,7 @@ func TestHandler_GetNewsMixedCase_ReturnsWelcomeMenu(t *testing.T) {
 	rr := httptest.NewRecorder()
 	h.ServeHTTP(rr, req)
 
-	if !strings.Contains(rr.Body.String(), "Welcome to VoiceScribe") {
+	if !strings.Contains(rr.Body.String(), "Welcome to NewScriber") {
 		t.Errorf("expected welcome menu, got: %s", rr.Body.String())
 	}
 }
@@ -127,7 +127,7 @@ func TestHandler_ExistingUserFreeText_ReturnsReminder(t *testing.T) {
 	h.ServeHTTP(rr, req)
 
 	body := rr.Body.String()
-	if !strings.Contains(body, "next VoiceScribe drop") {
+	if !strings.Contains(body, "next NewScriber drop") {
 		t.Errorf("expected reminder, got: %s", body)
 	}
 
