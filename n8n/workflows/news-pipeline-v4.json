@@ -594,7 +594,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, created_at) VALUES ('en', '{{ $json.choices[0].message.content.replace(/'/g, \"''\") }}', NOW());"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at) VALUES ('en', '{{ $node[\"Review (English)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW());"
       },
       "id": "pg-save-en",
       "name": "Save (English)",
@@ -614,7 +614,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, created_at) VALUES ('it', '{{ $json.choices[0].message.content.replace(/'/g, \"''\") }}', NOW());"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at) VALUES ('it', '{{ $node[\"Review (Italian)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW());"
       },
       "id": "pg-save-it",
       "name": "Save (Italian)",
@@ -634,7 +634,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, created_at) VALUES ('fr', '{{ $json.choices[0].message.content.replace(/'/g, \"''\") }}', NOW());"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at) VALUES ('fr', '{{ $node[\"Review (French)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW());"
       },
       "id": "pg-save-fr",
       "name": "Save (French)",
@@ -654,7 +654,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, created_at) VALUES ('bn', '{{ $json.choices[0].message.content.replace(/'/g, \"''\") }}', NOW());"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at) VALUES ('bn', '{{ $node[\"Review (Bangla)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW());"
       },
       "id": "pg-save-bn",
       "name": "Save (Bangla)",
