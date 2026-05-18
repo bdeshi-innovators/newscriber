@@ -78,7 +78,7 @@
           "interval": [
             {
               "field": "cronExpression",
-              "expression": "30 0,6,12 * * *"
+              "expression": "05 19 * * *"
             }
           ]
         }
@@ -1127,6 +1127,17 @@
       "main": [
         [
           {
+            "node": "Generate Descriptions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Descriptions": {
+      "main": [
+        [
+          {
             "node": "Prepare (English)",
             "type": "main",
             "index": 0
@@ -1143,11 +1154,6 @@
           },
           {
             "node": "Prepare (Bangla)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Generate Descriptions",
             "type": "main",
             "index": 0
           }
