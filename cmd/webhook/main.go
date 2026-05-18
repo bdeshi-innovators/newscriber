@@ -97,7 +97,7 @@ return fmt.Errorf("init tts client: %w", err)
 	mux.HandleFunc("/publish", handler.HandlePublish)
 	mux.HandleFunc("/api/publish", handler.HandlePublish)
 	mux.HandleFunc("/rss/generate", func(w http.ResponseWriter, r *http.Request) {
-		for _, lang := range []string{"en", "it", "fr", "bn"} {
+		for _, lang := range []string{"en", "it", "fr", "bn", "global"} {
 			if err := handler.UpdateRSSFeed(r.Context(), lang); err != nil {
 				slog.Error("failed manual RSS feed generation", "lang", lang, "err", err)
 				http.Error(w, "failed for "+lang+": "+err.Error(), http.StatusInternalServerError)

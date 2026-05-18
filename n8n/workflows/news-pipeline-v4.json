@@ -858,6 +858,21 @@
           "name": "VoiceScribe Postgres"
         }
       }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "http://webhook-app:8080/rss/generate",
+        "options": {}
+      },
+      "id": "pg-trigger-rss-generate",
+      "name": "Regenerate RSS Feeds",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2850,
+        700
+      ]
     }
   ],
   "connections": {
@@ -1309,6 +1324,50 @@
         [
           {
             "node": "Save (Bangla)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save (English)": {
+      "main": [
+        [
+          {
+            "node": "Regenerate RSS Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save (Italian)": {
+      "main": [
+        [
+          {
+            "node": "Regenerate RSS Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save (French)": {
+      "main": [
+        [
+          {
+            "node": "Regenerate RSS Feeds",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save (Bangla)": {
+      "main": [
+        [
+          {
+            "node": "Regenerate RSS Feeds",
             "type": "main",
             "index": 0
           }
