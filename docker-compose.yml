@@ -24,6 +24,8 @@ services:
     build: .
     image: voicescribe-webhook:${IMAGE_TAG:-latest}
     container_name: voicescribe-webhook
+    ports:
+      - "18080:8080"
     restart: unless-stopped
     env_file:
     - path: .env
@@ -57,6 +59,8 @@ services:
   n8n:
     image: n8nio/n8n
     container_name: voicescribe-n8n
+    ports:
+      - "${N8N_HOST_PORT:-15678}:5678"
     restart: unless-stopped
     user: 1000:1000
     env_file:

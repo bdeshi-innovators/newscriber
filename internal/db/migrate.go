@@ -59,7 +59,10 @@ CREATE TABLE IF NOT EXISTS episodes (
     tts_at       TIMESTAMPTZ,             -- set when MP3 is generated (Step 3)
     mp3_url      TEXT,                    -- set when MP3 is uploaded (Step 3)
     ogg_url      TEXT,
-    wav_url      TEXT
+    wav_url      TEXT,
+    title        TEXT,
+    description  TEXT,
+    status       VARCHAR(20)  NOT NULL DEFAULT 'published'
 );
 
 -- Ensure columns exist in case tables were already created
@@ -67,6 +70,9 @@ ALTER TABLE news_items ADD COLUMN IF NOT EXISTS ogg_url TEXT;
 ALTER TABLE news_items ADD COLUMN IF NOT EXISTS wav_url TEXT;
 ALTER TABLE episodes ADD COLUMN IF NOT EXISTS ogg_url TEXT;
 ALTER TABLE episodes ADD COLUMN IF NOT EXISTS wav_url TEXT;
+ALTER TABLE episodes ADD COLUMN IF NOT EXISTS title TEXT;
+ALTER TABLE episodes ADD COLUMN IF NOT EXISTS description TEXT;
+ALTER TABLE episodes ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'published';
 `
 
 func Migrate(ctx context.Context, conn *sql.DB) error {

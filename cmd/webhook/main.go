@@ -89,6 +89,13 @@ return fmt.Errorf("init tts client: %w", err)
 	mux := http.NewServeMux()
 	mux.Handle("/webhook/whatsapp", handler)
 	mux.HandleFunc("/tts", handler.HandleTTS)
+	mux.HandleFunc("/visualizer", handler.HandleVisualizer)
+	mux.HandleFunc("/episodes", handler.HandleEpisodes)
+	mux.HandleFunc("/api/episodes", handler.HandleEpisodes)
+	mux.HandleFunc("/trigger", handler.HandleTrigger)
+	mux.HandleFunc("/api/trigger", handler.HandleTrigger)
+	mux.HandleFunc("/publish", handler.HandlePublish)
+	mux.HandleFunc("/api/publish", handler.HandlePublish)
 	mux.HandleFunc("/rss/generate", func(w http.ResponseWriter, r *http.Request) {
 		for _, lang := range []string{"en", "it", "fr", "bn"} {
 			if err := handler.UpdateRSSFeed(r.Context(), lang); err != nil {
