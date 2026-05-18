@@ -1,12 +1,10 @@
 # Production Block (with Automatic HTTPS)
 newscriber.unityflow.ai {
-    # Webhook App
-    handle_path /api/* {
-        reverse_proxy webhook-app:8080
+    # Webhook App routes
+    @webhook_routes {
+        path /api/* /visualizer* /trigger* /publish* /episodes*
     }
-
-    # Visualizer dashboard
-    handle /visualizer* {
+    handle @webhook_routes {
         reverse_proxy webhook-app:8080
     }
 
@@ -35,13 +33,11 @@ newscriber.unityflow.ai {
 
 # Local Development Block (Strictly HTTP, no HTTPS redirects!)
 http://localhost, http://127.0.0.1 {
-    # Webhook App
-    handle_path /api/* {
-        reverse_proxy webhook-app:8080
+    # Webhook App routes
+    @webhook_routes {
+        path /api/* /visualizer* /trigger* /publish* /episodes*
     }
-
-    # Visualizer dashboard
-    handle /visualizer* {
+    handle @webhook_routes {
         reverse_proxy webhook-app:8080
     }
 
