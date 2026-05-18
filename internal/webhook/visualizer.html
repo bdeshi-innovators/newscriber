@@ -1379,6 +1379,13 @@
             'bn': 'Dhaka (বাংলা)'
         };
 
+        const episodeLangTitles = {
+            'en': 'English',
+            'it': 'Italiano',
+            'fr': 'Français',
+            'bn': 'বাংলা'
+        };
+
         const regionVoices = {
             'en': 'Alex & Sam',
             'it': 'Marco & Sofia',
@@ -1677,8 +1684,9 @@
                     .map(src => `<span class="source-tag">${src}</span>`)
                     .join('');
 
-                // Custom Title fallback representation
-                const titleText = ep.title || `${regionNames[ep.language] || ep.language.toUpperCase()} Briefing`;
+                // Custom Title fallback representation matching RSS Feed exactly
+                const langName = episodeLangTitles[ep.language] || ep.language.toUpperCase();
+                const titleText = ep.title || `NewScriber ${langName} - Episode #${ep.episode_number || 0}`;
 
                 let rowCoverURL = '';
                 if (ep.mp3_url) {
@@ -1838,11 +1846,14 @@
                 `;
             }
 
+            const langName = episodeLangTitles[ep.language] || ep.language.toUpperCase();
+            const defaultTitle = `NewScriber ${langName} - Episode #${ep.episode_number || 0}`;
+
             detailPanel.innerHTML = `
                 <div class="detail-header" style="display: flex; gap: 16px; align-items: center;">
                     ${coverImgHTML}
                     <div style="flex-grow: 1; min-width: 0;">
-                        <h1 class="detail-meta-title" style="margin: 0 0 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${ep.title || `${langLabel} Daily`}</h1>
+                        <h1 class="detail-meta-title" style="margin: 0 0 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${ep.title || defaultTitle}</h1>
                         <div class="detail-meta-subtitle">
                             <span>Drop ID: #${ep.id}</span>
                             <span>•</span>
@@ -1908,7 +1919,8 @@
             if (!selectedEpisode) return;
             
             // Set Player Information UI
-            playerTitle.innerText = `${regionNames[selectedEpisode.language] || selectedEpisode.language.toUpperCase()} Briefing`;
+            const playerLangName = episodeLangTitles[selectedEpisode.language] || selectedEpisode.language.toUpperCase();
+            playerTitle.innerText = selectedEpisode.title || `NewScriber ${playerLangName} - Episode #${selectedEpisode.episode_number || 0}`;
             playerSubtitle.innerText = `Drop ID: #${selectedEpisode.id} • ${new Date(selectedEpisode.created_at).toLocaleDateString()}`;
             playerLangBadge.innerText = selectedEpisode.language.toUpperCase();
             

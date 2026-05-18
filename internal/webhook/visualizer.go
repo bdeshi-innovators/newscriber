@@ -43,6 +43,7 @@ func (h *Handler) HandleEpisodes(w http.ResponseWriter, r *http.Request) {
 		       COALESCE(e.title, '') as title,
 		       COALESCE(e.description, '') as description,
 		       COALESCE(e.status, 'published') as status,
+		       COALESCE(e.episode_number, 0) as episode_number,
 		       (
 		           SELECT COALESCE(json_agg(json_build_object(
 		               'source', n.source_name,
@@ -62,6 +63,10 @@ func (h *Handler) HandleEpisodes(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "database query failed: "+err.Error(), http.StatusInternalServerError)
 		return
 	}
+	if rows == nil {
+		http.Error(w, "database returned no rows", http.StatusInternalServerError)
+		return
+	}
 	defer rows.Close()
 
 	type EpisodeItem struct {
@@ -75,6 +80,7 @@ func (h *Handler) HandleEpisodes(w http.ResponseWriter, r *http.Request) {
 		Title          string          `json:"title"`
 		Description    string          `json:"description"`
 		Status         string          `json:"status"`
+		EpisodeNumber  int64           `json:"episode_number"`
 		Articles       json.RawMessage `json:"articles"`
 		DynamicSources []string        `json:"dynamic_sources"`
 	}
@@ -84,7 +90,7 @@ func (h *Handler) HandleEpisodes(w http.ResponseWriter, r *http.Request) {
 		var ep EpisodeItem
 		var rawArticles []byte
 		var createdAt time.Time
-		if err := rows.Scan(&ep.ID, &ep.Language, &ep.Script, &createdAt, &ep.MP3URL, &ep.OGGURL, &ep.WAVURL, &ep.Title, &ep.Description, &ep.Status, &rawArticles); err != nil {
+		if err := rows.Scan(&ep.ID, &ep.Language, &ep.Script, &createdAt, &ep.MP3URL, &ep.OGGURL, &ep.WAVURL, &ep.Title, &ep.Description, &ep.Status, &ep.EpisodeNumber, &rawArticles); err != nil {
 			slog.Error("failed scanning episode for visualizer", "err", err)
 			http.Error(w, "database scan failed: "+err.Error(), http.StatusInternalServerError)
 			return
