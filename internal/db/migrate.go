@@ -62,7 +62,8 @@ CREATE TABLE IF NOT EXISTS episodes (
     wav_url      TEXT,
     title        TEXT,
     description  TEXT,
-    status       VARCHAR(20)  NOT NULL DEFAULT 'published'
+    status       VARCHAR(20)  NOT NULL DEFAULT 'published',
+    episode_number INTEGER
 );
 
 -- Ensure columns exist in case tables were already created
@@ -73,6 +74,7 @@ ALTER TABLE episodes ADD COLUMN IF NOT EXISTS wav_url TEXT;
 ALTER TABLE episodes ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE episodes ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE episodes ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'published';
+ALTER TABLE episodes ADD COLUMN IF NOT EXISTS episode_number INTEGER;
 `
 
 func Migrate(ctx context.Context, conn *sql.DB) error {
