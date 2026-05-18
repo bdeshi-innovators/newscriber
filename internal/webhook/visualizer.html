@@ -1106,26 +1106,44 @@
             </div>
         </div>
         
-        <div style="display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 30px; backdrop-filter: blur(10px);">
-            <!-- Language Dropdown -->
-            <select id="select-trigger-lang" style="background: rgba(18, 17, 15, 0.85); color: #ECE8DF; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 15px; padding: 6px 10px; font-size: 0.8rem; font-family: 'Outfit', sans-serif; cursor: pointer; outline: none;">
-                <option value="all">⚡ All Regions</option>
-                <option value="en">🇬🇧 London (EN)</option>
-                <option value="it">🇮🇹 Rome (IT)</option>
-                <option value="fr">🇫🇷 Paris (FR)</option>
-                <option value="bn">🇧🇩 Dhaka (BN)</option>
-            </select>
+        <div style="display: flex; gap: 15px; align-items: center;">
+            <!-- RSS Feed Download Group -->
+            <div style="display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 30px; backdrop-filter: blur(10px);">
+                <select id="select-rss-feed" style="background: rgba(18, 17, 15, 0.85); color: #ECE8DF; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 15px; padding: 6px 10px; font-size: 0.8rem; font-family: 'Outfit', sans-serif; cursor: pointer; outline: none;">
+                    <option value="" disabled selected>🎙️ RSS Feeds</option>
+                    <option value="global">🌍 Global Feed</option>
+                    <option value="en">🇬🇧 English Feed</option>
+                    <option value="it">🇮🇹 Italian Feed</option>
+                    <option value="fr">🇫🇷 French Feed</option>
+                    <option value="bn">🇧🇩 Dhaka (BN) Feed</option>
+                </select>
+                <button onclick="downloadRSSFeed()" title="Download Selected XML" style="background: rgba(196, 59, 43, 0.2); border: 1px solid rgba(196, 59, 43, 0.5); color: var(--accent-red); padding: 6px; border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s;" onmouseover="this.style.background='var(--accent-red)'; this.style.color='var(--text-heading)'" onmouseout="this.style.background='rgba(196, 59, 43, 0.2)'; this.style.color='var(--accent-red)'">
+                    <svg viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width: 14px; height: 14px; stroke: currentColor; fill: none;"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                </button>
+            </div>
 
-            <!-- Auto-Publish Toggle -->
-            <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #9A958F; cursor: pointer; font-family: 'Outfit', sans-serif; user-select: none;">
-                <input type="checkbox" id="chk-auto-publish" checked style="accent-color: #C43B2B; cursor: pointer; width: 14px; height: 14px;">
-                <span>Auto-Publish</span>
-            </label>
+            <!-- Trigger Workflow Group -->
+            <div style="display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 30px; backdrop-filter: blur(10px);">
+                <!-- Language Dropdown -->
+                <select id="select-trigger-lang" style="background: rgba(18, 17, 15, 0.85); color: #ECE8DF; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 15px; padding: 6px 10px; font-size: 0.8rem; font-family: 'Outfit', sans-serif; cursor: pointer; outline: none;">
+                    <option value="all">⚡ All Regions</option>
+                    <option value="en">🇬🇧 London (EN)</option>
+                    <option value="it">🇮🇹 Rome (IT)</option>
+                    <option value="fr">🇫🇷 Paris (FR)</option>
+                    <option value="bn">🇧🇩 Dhaka (BN)</option>
+                </select>
 
-            <button class="btn btn-primary" id="btn-trigger-workflow" onclick="triggerWorkflow()" style="padding: 8px 16px; font-size: 0.8rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(196, 59, 43, 0.3); border: 1px solid rgba(196, 59, 43, 0.4); display: flex; align-items: center; gap: 6px;">
-                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="fill: currentColor;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
-                <span>Trigger Fresh Drop</span>
-            </button>
+                <!-- Auto-Publish Toggle -->
+                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #9A958F; cursor: pointer; font-family: 'Outfit', sans-serif; user-select: none;">
+                    <input type="checkbox" id="chk-auto-publish" checked style="accent-color: #C43B2B; cursor: pointer; width: 14px; height: 14px;">
+                    <span>Auto-Publish</span>
+                </label>
+
+                <button class="btn btn-primary" id="btn-trigger-workflow" onclick="triggerWorkflow()" style="padding: 8px 16px; font-size: 0.8rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(196, 59, 43, 0.3); border: 1px solid rgba(196, 59, 43, 0.4); display: flex; align-items: center; gap: 6px;">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="fill: currentColor;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    <span>Trigger Fresh Drop</span>
+                </button>
+            </div>
         </div>
             
             <div class="header-icon">
@@ -1281,6 +1299,7 @@
             <!-- Left: Info -->
             <div class="player-info">
                 <div class="player-visuals">
+                    <img id="player-cover-art" src="" style="width: 100%; height: 100%; object-fit: cover; display: none;" />
                     <span class="player-visuals-lang" id="player-lang-badge">EN</span>
                     <div class="wave-anim" id="wave-animation">
                         <div class="wave-bar"></div>
@@ -1661,19 +1680,34 @@
                 // Custom Title fallback representation
                 const titleText = ep.title || `${regionNames[ep.language] || ep.language.toUpperCase()} Briefing`;
 
+                let rowCoverURL = '';
+                if (ep.mp3_url) {
+                    const audioDir = ep.mp3_url.substring(0, ep.mp3_url.lastIndexOf('/') + 1);
+                    rowCoverURL = `${audioDir}cover_${ep.language}.jpeg`;
+                }
+
+                const coverThumbnailHTML = rowCoverURL 
+                    ? `<img src="${rowCoverURL}" style="width: 36px; height: 36px; border-radius: 6px; object-fit: cover; border: 1px solid var(--border-glow); flex-shrink: 0;" />`
+                    : `<div style="width: 36px; height: 36px; border-radius: 6px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glow); display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: 700; color: var(--text-muted); flex-shrink: 0;">${ep.language.toUpperCase()}</div>`;
+
                 row.innerHTML = `
-                    <div class="ep-row-meta">
-                        <div class="ep-row-lang-info">
-                            <span class="lang-indicator">${ep.language}</span>
-                            <span class="ep-row-id">Drop #${ep.id}</span>
+                    <div style="display: flex; gap: 12px; align-items: flex-start; width: 100%;">
+                        ${coverThumbnailHTML}
+                        <div style="flex-grow: 1; min-width: 0;">
+                            <div class="ep-row-meta">
+                                <div class="ep-row-lang-info">
+                                    <span class="lang-indicator">${ep.language}</span>
+                                    <span class="ep-row-id">Drop #${ep.id}</span>
+                                </div>
+                                <span class="ep-row-date">${dateStr}</span>
+                            </div>
+                            <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-heading); margin: 6px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                                ${titleText}
+                            </div>
+                            <div class="ep-row-sources">
+                                ${sourcesHTML || '<span class="source-tag" style="opacity:0.5">Autonomous</span>'}
+                            </div>
                         </div>
-                        <span class="ep-row-date">${dateStr}</span>
-                    </div>
-                    <div style="font-weight: 600; font-size: 0.85rem; color: var(--text-heading); margin: 6px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${titleText}
-                    </div>
-                    <div class="ep-row-sources">
-                        ${sourcesHTML || '<span class="source-tag" style="opacity:0.5">Autonomous</span>'}
                     </div>
                 `;
                 episodesList.appendChild(row);
@@ -1787,10 +1821,28 @@
                 `;
             }
 
+            let coverImgHTML = '';
+            if (ep.mp3_url) {
+                const audioDir = ep.mp3_url.substring(0, ep.mp3_url.lastIndexOf('/') + 1);
+                const coverURL = `${audioDir}cover_${ep.language}.jpeg`;
+                coverImgHTML = `
+                    <div style="position: relative; width: 64px; height: 64px; border-radius: 8px; border: 1px solid var(--border-glow); overflow: hidden; box-shadow: 0 4px 15px rgba(0,0,0,0.3); flex-shrink: 0;">
+                        <img src="${coverURL}" style="width: 100%; height: 100%; object-fit: cover;" alt="Cover" />
+                    </div>
+                `;
+            } else {
+                coverImgHTML = `
+                    <div style="position: relative; width: 64px; height: 64px; border-radius: 8px; background: rgba(255,255,255,0.03); border: 1px solid var(--border-glow); display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; color: var(--text-muted); flex-shrink: 0;">
+                        ${ep.language.toUpperCase()}
+                    </div>
+                `;
+            }
+
             detailPanel.innerHTML = `
-                <div class="detail-header">
-                    <div>
-                        <h1 class="detail-meta-title">${ep.title || `${langLabel} Daily`}</h1>
+                <div class="detail-header" style="display: flex; gap: 16px; align-items: center;">
+                    ${coverImgHTML}
+                    <div style="flex-grow: 1; min-width: 0;">
+                        <h1 class="detail-meta-title" style="margin: 0 0 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${ep.title || `${langLabel} Daily`}</h1>
                         <div class="detail-meta-subtitle">
                             <span>Drop ID: #${ep.id}</span>
                             <span>•</span>
@@ -1798,7 +1850,7 @@
                             ${isDraft ? '<span style="background: rgba(196, 59, 43, 0.15); color: #C43B2B; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-left: 6px;">⏳ DRAFT</span>' : '<span style="background: rgba(43, 196, 120, 0.15); color: #2bc478; font-size: 0.7rem; padding: 2px 8px; border-radius: 10px; font-weight: bold; margin-left: 6px;">⚡ LIVE RSS</span>'}
                         </div>
                     </div>
-                    <div class="detail-actions">
+                    <div class="detail-actions" style="flex-shrink: 0;">
                         ${playButtonHTML}
                     </div>
                 </div>
@@ -1848,6 +1900,19 @@
             playerTitle.innerText = `${regionNames[selectedEpisode.language] || selectedEpisode.language.toUpperCase()} Briefing`;
             playerSubtitle.innerText = `Drop ID: #${selectedEpisode.id} • ${new Date(selectedEpisode.created_at).toLocaleDateString()}`;
             playerLangBadge.innerText = selectedEpisode.language.toUpperCase();
+            
+            // Set cover art image
+            const playerCoverArt = document.getElementById('player-cover-art');
+            if (selectedEpisode.mp3_url) {
+                const audioDir = selectedEpisode.mp3_url.substring(0, selectedEpisode.mp3_url.lastIndexOf('/') + 1);
+                const coverURL = `${audioDir}cover_${selectedEpisode.language}.jpeg`;
+                playerCoverArt.src = coverURL;
+                playerCoverArt.style.display = 'block';
+                playerLangBadge.style.display = 'none';
+            } else {
+                playerCoverArt.style.display = 'none';
+                playerLangBadge.style.display = 'block';
+            }
             
             // Highlight format buttons according to available URLs
             validateFormatButtons();
@@ -2126,6 +2191,32 @@
                 btn.style.cursor = 'pointer';
                 btnText.textContent = '✨ Approve & Publish to RSS';
             });
+        }
+
+        function downloadRSSFeed() {
+            const selectEl = document.getElementById('select-rss-feed');
+            const lang = selectEl.value;
+            
+            if (!lang) {
+                showToast("⚠️ Missing Selection", "Please select an RSS feed from the dropdown first.", "error");
+                return;
+            }
+            
+            const url = window.location.origin + '/storage/feed_' + lang + '.xml';
+            
+            // Create a temporary hidden anchor to trigger standard download/open in new tab
+            const link = document.createElement('a');
+            link.href = url;
+            link.target = '_blank';
+            link.download = `feed_${lang}.xml`;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+
+            // Reset select value to default
+            selectEl.value = "";
+            
+            showToast("🎙️ RSS Feed Access", `Opening feed_${lang}.xml in a new tab...`, "success");
         }
     </script>
 </body>

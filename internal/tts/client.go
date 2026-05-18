@@ -229,3 +229,7 @@ func (c *Client) upload(ctx context.Context, filename string, data []byte, conte
 func (c *Client) UploadXML(ctx context.Context, filename string, data []byte) (string, error) {
 	return c.upload(ctx, filename, data, "application/xml")
 }
+
+func (c *Client) UploadAsset(ctx context.Context, filename string, data []byte, contentType string) (string, error) {
+	return c.upload(ctx, filename, data, contentType)
+}

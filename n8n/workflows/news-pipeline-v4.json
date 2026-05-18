@@ -385,6 +385,19 @@
     },
     {
       "parameters": {
+        "jsCode": "const items = $input.all();\n\n// Extract unique source names\nconst sources = [...new Set(items.map(i => i.json.source_name).filter(Boolean))];\n\n// Format sources list for each language\nfunction formatSources(list, lang) {\n  if (list.length === 0) {\n    if (lang === 'it') return 'TechCrunch e altre fonti principali';\n    if (lang === 'fr') return 'TechCrunch et d\\'autres sources majeures';\n    if (lang === 'bn') return 'TechCrunch এবং অন্যান্য শীর্ষ সংবাদ মাধ্যম';\n    return 'TechCrunch and other top tech outlets';\n  }\n  if (list.length === 1) return list[0];\n  \n  if (lang === 'it') return list.slice(0, -1).join(', ') + ' e ' + list[list.length - 1];\n  if (lang === 'fr') return list.slice(0, -1).join(', ') + ' et ' + list[list.length - 1];\n  if (lang === 'bn') return list.slice(0, -1).join(', ') + ' এবং ' + list[list.length - 1];\n  return list.slice(0, -1).join(', ') + ' and ' + list[list.length - 1];\n}\n\n// Get a short headlines preview list (e.g. up to 3 headlines)\nconst headlines = items.map(i => i.json.headline).filter(Boolean).slice(0, 3);\n\n// Localized summaries/previews of today's topics\nconst enTopics = headlines.length > 0 ? ' Topics discussed: ' + headlines.join('; ') : '';\nconst itTopics = headlines.length > 0 ? ' Argomenti trattati: ' + headlines.join('; ') : '';\nconst frTopics = headlines.length > 0 ? ' Sujets abordés : ' + headlines.join('; ') : '';\nconst bnTopics = headlines.length > 0 ? ' আলোচিত বিষয়সমূহ: ' + headlines.join('; ') : '';\n\n// Create description for each language\nconst desc_en = `Welcome to today's English Daily Briefing by NewScriber! Today's stories are curated from ${formatSources(sources, 'en')}. Join your virtual hosts Alex and Sam as they break down the latest updates.${enTopics}`;\nconst desc_it = `Benvenuti al bollettino quotidiano in italiano di NewScriber! Le storie di oggi sono curate da ${formatSources(sources, 'it')}. Unisciti ai nostri conduttori virtuali Marco e Sofia mentre analizzano le ultime notizie.${itTopics}`;\nconst desc_fr = `Bienvenue dans le briefing quotidien en français de NewScriber ! Les actualités d'aujourd'hui sont sélectionnées depuis ${formatSources(sources, 'fr')}. Rejoignez vos présentateurs virtuels Pierre et Marie pour décrypter le meilleur de la tech : ${frTopics}`;\nconst desc_bn = `নিউস্ক্রাইবার বাংলা ডেইলি ব্রিফিংয়ে আপনাদের স্বাগতম! আজকের খবরগুলো নেয়া হয়েছে ${formatSources(sources, 'bn')} থেকে। আমাদের এআই সঞ্চালক ফাহিম এবং নুসরাত আজকের পর্বে আলোচনা করছেন।${bnTopics}`;\n\nreturn [{\n  json: {\n    description_en: desc_en,\n    description_it: desc_it,\n    description_fr: desc_fr,\n    description_bn: desc_bn\n  }\n}];"
+      },
+      "id": "generate-descriptions",
+      "name": "Generate Descriptions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2000,
+        200
+      ]
+    },
+    {
+      "parameters": {
         "jsCode": "const items = $input.all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'English';\nconst code = 'en';\nconst hour = new Date().getHours();\nlet timeRef = 'today';\nif (hour >= 5 && hour < 12) timeRef = 'this morning';\nelse if (hour >= 12 && hour < 17) timeRef = 'this afternoon';\nelse if (hour >= 17 && hour < 22) timeRef = 'tonight';\nconst systemPrompt = `You are a podcast scriptwriter for 'NewScriber'. Assemble these summaries into a 2-person conversation (Alex and Sam) in ${targetLang}. Start the podcast intro by welcoming the listeners to NewScriber. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Output the script as a raw JSON array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
       },
       "id": "prep-en",
@@ -658,7 +671,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at, episode_number) VALUES ('en', '{{ $node[\"Review (English)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, description, tts_at, created_at, episode_number) VALUES ('en', '{{ $node[\"Review (English)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', '{{ $node[\"Generate Descriptions\"].json.description_en.replace(/'/g, \"''\") }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
       },
       "id": "pg-save-en",
       "name": "Save (English)",
@@ -678,7 +691,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at, episode_number) VALUES ('it', '{{ $node[\"Review (Italian)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, description, tts_at, created_at, episode_number) VALUES ('it', '{{ $node[\"Review (Italian)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', '{{ $node[\"Generate Descriptions\"].json.description_it.replace(/'/g, \"''\") }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
       },
       "id": "pg-save-it",
       "name": "Save (Italian)",
@@ -698,7 +711,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at, episode_number) VALUES ('fr', '{{ $node[\"Review (French)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, description, tts_at, created_at, episode_number) VALUES ('fr', '{{ $node[\"Review (French)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', '{{ $node[\"Generate Descriptions\"].json.description_fr.replace(/'/g, \"''\") }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
       },
       "id": "pg-save-fr",
       "name": "Save (French)",
@@ -718,7 +731,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at, episode_number) VALUES ('bn', '{{ $node[\"Review (Bangla)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, description, tts_at, created_at, episode_number) VALUES ('bn', '{{ $node[\"Review (Bangla)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', '{{ $node[\"Generate Descriptions\"].json.description_bn.replace(/'/g, \"''\") }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
       },
       "id": "pg-save-bn",
       "name": "Save (Bangla)",
@@ -1130,6 +1143,11 @@
           },
           {
             "node": "Prepare (Bangla)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Generate Descriptions",
             "type": "main",
             "index": 0
           }

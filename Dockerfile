@@ -13,6 +13,7 @@ FROM alpine:3.20
 RUN apk add --no-cache ca-certificates ffmpeg
 WORKDIR /app
 COPY --from=build /out/webhook /app/webhook
+COPY resources /app/resources
 EXPOSE 8080
 USER nobody
 ENTRYPOINT ["/app/webhook"]

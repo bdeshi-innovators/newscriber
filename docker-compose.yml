@@ -39,6 +39,8 @@ services:
       TWILIO_AUTH_TOKEN: ${TWILIO_AUTH_TOKEN:-}
       TWILIO_WHATSAPP_NUMBER: ${TWILIO_WHATSAPP_NUMBER:-}
       META_WHATSAPP_NUMBER: ${META_WHATSAPP_NUMBER:-}
+    volumes:
+      - ./resources:/app/resources:ro
     depends_on:
       db:
         condition: service_healthy
