@@ -1,343 +1,299 @@
-# VoiceScribe — Information delivered in local vocal
+# NewScribe (formerly VoiceScribe) — Multilingual Automated News Briefing & Podcast Network
 
-V1 hackathon prototype of a multilingual automated WhatsApp news delivery system.
-This slice is the **interactive onboarding webhook**: receive WhatsApp inbound
-messages, register the user in Postgres, let them pick a language
-(English / Italian / French / Bangla), and acknowledge with a placeholder audio drop.
+NewScribe is a high-fidelity, autonomous, end-to-end multilingual AI news editor, podcast scriptwriter, and voice briefing delivery network. 
 
-## Stack & Technologies
-
-The system is built on a modern, containerized stack designed for reliability and ease of automation.
-
-### Core Services
-- **[Go](https://go.dev/)**: The core language used for the `webhook-app`. It provides high-performance, concurrent handling of WhatsApp interactions.
-- **[PostgreSQL](https://www.postgresql.org/)**: A robust relational database for persisting user profiles, language preferences, and news items.
-- **[n8n](https://n8n.io/)**: A powerful low-code workflow automation tool used for orchestrating the news ingestion, summarization (via **Azure OpenAI**), and multi-language script assembly.
-- **[Azure OpenAI](https://azure.microsoft.com/en-us/products/ai-services/openai-service)**: Provides the LLM capabilities for rewriting news articles into spoken prose and assembling them into conversational podcast scripts.
-- **[Caddy](https://caddyserver.com/)**: A modern web server and reverse proxy that handles traffic routing and will provide automatic HTTPS once a domain is attached.
-
-### Infrastructure & Tooling
-- **[Docker](https://www.docker.com/) & [Compose](https://docs.docker.com/compose/)**: Orchestrates the entire stack, ensuring consistent environments between local development and cloud production.
-- **[GCP (Google Cloud Platform)](https://cloud.google.com/)**: Hosts the remote virtual machine for the production deployment.
-- **[Firecrawl](https://www.firecrawl.dev/)**: Used within n8n workflows for advanced web scraping and article extraction.
-- **[rsync](https://rsync.samba.org/)**: Powering the `make deploy` workflow for efficient file synchronization to the remote server.
-
-## System architecture
-
-### Where we are (V1 — onboarding only)
-
-```
-   WhatsApp user
-       │  text message
-       ▼
-  ┌─────────────────────┐
-  │ Twilio  /  Meta     │   (provider relays inbound to our webhook;
-  │ WhatsApp Cloud API  │    will also be used for outbound in V2)
-  └────────┬────────────┘
-           │ HTTPS POST  (form-encoded OR JSON)
-           ▼
-  ┌──────────────────────────────────────────────────┐
-  │ webhook-app  (Go, container :8080 → host :18080) │
-  │                                                  │
-  │   internal/webhook/parser.go                     │
-  │     Content-Type → Twilio form  OR  Meta JSON    │
-  │                                                  │
-  │   internal/webhook/handler.go                    │
-  │     ┌─ body == "1" / "2" / "3"  →  upsert lang   │
-  │     ├─ unknown user OR "Get News"  →  menu       │
-  │     └─ known user, free text  →  reminder        │
-  │                                                  │
-  │   reply: TwiML (Twilio) or JSON (Meta)           │
-  └──────────────┬───────────────────────────────────┘
-                 │ database/sql + pgx
-                 ▼
-  ┌──────────────────────────────────────────────────┐
-  │ db  (postgres:15-alpine, :5432 → host :55432)    │
-  │   users(phone_number PK, language_pref, ...)     │
-  └──────────────────────────────────────────────────┘
-
-  ┌──────────────────────────────────────────────────┐
-  │ n8n  (in the stack but not yet wired to flow;    │
-  │       reserved for the news pipeline in V2)      │
-  └──────────────────────────────────────────────────┘
-```
-
-### Where we're going (V2 — closing the loop)
-
-```
-                ┌──────────────────────────┐
-                │ News sources (RSS / API) │
-                └────────────┬─────────────┘
-                             │
-                             ▼
-  ┌────────────────────────────────────────────────────────────┐
-  │ n8n  (every ~2h cron workflow)                             │
-  │   1. fetch & dedupe (SHA256 fingerprint)                   │
-  │   2. extract (Firecrawl JSON extraction)                   │
-  │   3. summarize (Azure OpenAI - 220 word prose)             │
-  │   4. assemble (Joe/Jane dual-host conversational script)   │
-  │   5. save to `episodes` table (En / It / Fr / Bn)          │
-  │   6. [FUTURE] text-to-speech → MP3 per language            │
-  │   7. [FUTURE] upload MP3 to object store                   │
-  │   8. [FUTURE] POST /broadcast { language, text, mediaUrl } │
-  └────────────────────────────────┬───────────────────────────┘
-                                   │
-                                   ▼
-  ┌────────────────────────────────────────────────────────────┐
-  │ webhook-app                                                │
-  │   POST /webhook/whatsapp   inbound  (already exists)       │
-  │   POST /broadcast          outbound  (NEW)                 │
-  │     → SELECT phone_number FROM users WHERE language=…      │
-  │     → Twilio/Meta send-message API with media URL          │
-  │     → record row in deliveries(broadcast_id, phone, …)     │
-  └──────┬─────────────────────────┬───────────────────────────┘
-         │ pgx                     │ HTTPS
-         ▼                         ▼
-  ┌──────────────────┐   ┌────────────────────────────────┐
-  │ Postgres         │   │ Twilio / Meta send-message API │
-  │  users           │   └──────────────┬─────────────────┘
-  │  broadcasts      │                  │
-  │  deliveries      │                  ▼
-  └──────────────────┘             WhatsApp user
-                                   (audio drop)
-
-  ┌────────────────────────────────────────────────────────────┐
-  │ Object store (R2 / S3) — public MP3 URLs                   │
-  └────────────────────────────────────────────────────────────┘
-```
-
-### Design notes — why these pieces
-
-| Choice                                              | Why                                                                                                                       |
-| --------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
-| **Go for the webhook**                              | Single static binary, tiny image, `net/http` is enough, instant cold-start, easy to keep running long-term.               |
-| **`database/sql` + `pgx/v5/stdlib`**                | Stdlib boundary keeps repo code portable; pgx gives us modern Postgres semantics under the hood.                          |
-| **Repo interface + in-memory fake + testcontainers** | Handler tests stay sub-millisecond against a fake; repo SQL stays correct against a real Postgres in a tagged test.       |
-| **Two payload shapes (Twilio + Meta) behind one parser** | Lets us swap WhatsApp providers later without touching handler/business logic.                                       |
-| **TwiML reply for Twilio, JSON for Meta**           | Twilio responds synchronously in the webhook reply; Meta uses a separate outbound API call — JSON keeps that decoupled.   |
-| **n8n in the stack (not yet wired)**                | Visual workflow editor for the news pipeline → non-engineers can iterate on prompt/source/cadence without code deploys.   |
-| **Mock MP3 URL in V1**                              | Decouples onboarding from the audio pipeline so we ship onboarding before TTS exists. The URL is the seam.                |
-| **`_data/` bind mounts under compose project namespace** | Host-visible data, no Go-package-walker collisions, no container-name collisions with other projects.                |
-| **Multi-call TTS per dialogue**                     | Allows switching voices (Host/Guest) per line. PCM concatenation ensures zero-gap audio while bypassing API character limits. |
-| **`.env` via Compose `env_file:`**                  | Secrets live outside source; new keys (Twilio token, Meta secret, R2 creds…) flow into the container with no compose edit. |
-
+The system automates the entire ingestion-to-ear pipeline: it extracts tech and business news from multiple websites using **Firecrawl**, selects and ranks the best stories using an **Azure OpenAI-powered Editor Agent**, summarizes them, compiles them into natural dual-host conversational podcast scripts, renders lifelike synthetic voice dialogues using **Gemini TTS via OpenRouter**, transcodes the audio into multiple high-quality formats (WAV, MP3, OGG) using **ffmpeg**, hosts them on **Minio/Cloudflare R2**, generates self-healing **iTunes-compliant RSS feeds**, serves a beautiful web **Visualizer Dashboard**, and delivers briefings directly to subscribed users via **WhatsApp webhooks**.
 
 ---
 
-## Infrastructure & Operations
+## Core Stack & Technologies
 
-This section details how to run the system locally, how to verify the webhook, and how the cloud deployment is orchestrated.
+NewScribe is fully containerized, secure, and optimized for both local development and remote cloud deployments.
 
-## Run tests locally
+### 1. Go Webhook & Orchestration Engine (`webhook-app`)
+*   **Performance & Concatenation**: Acts as the central high-performance server. It processes incoming WhatsApp webhook payloads (supporting both Twilio and Meta Cloud API formats), handles user registrations in PostgreSQL, orchestrates TTS audio renders, transcodes raw PCM data, and serves the Web Visualizer.
+*   **ffmpeg Transcoding**: Integrates with local `ffmpeg` to stitch individual voice dialogues and transcode raw 16-bit LE mono PCM @ 24kHz streams into:
+    *   `WAV` (PCM raw format)
+    *   `MP3` (`audio/mpeg` at high bitrate)
+    *   `OGG` (`audio/ogg` encoded with Opus)
+*   **RSS Generator**: Dynamically compiles and uploads iTunes-compliant XML podcast feeds (`feed_en.xml`, `feed_it.xml`, etc.) to S3 with automatic self-healing routines to bypass XML formatting corruptions.
 
-Unit tests only (fast, no Docker required):
+### 2. n8n Workflow Orchestrator
+*   **News Pipeline V4**: Serves as the cron-driven and manual visual workflow editor. It manages index crawling, article parsing, LLM editing and summarizing, multi-language dialogue script synthesis, dialogue review, Go `/tts` invocations, and database persistence.
+*   **Automated Bootstrap**: Pre-loads workflows and connection credentials using `scripts/n8n-init.sh` upon stack boot, ensuring a zero-manual-configuration developer experience.
 
-```sh
-go test ./...
+### 3. Database Layer (PostgreSQL)
+*   `users`: Persists user phone numbers, language preferences, timezones, and registration timestamps.
+*   `news_items`: Acts as an article cache and state machine. Stores scraped metadata, raw bodies, and AI summaries. Unsummarized and unsent article indices ensure high resiliency—if downstream steps fail, the pipeline resumes without re-scraping.
+*   `episodes`: Stores assembled podcast transcripts, S3 audio URLs, title, description, episode number, and publication statuses.
+
+### 4. Advanced AI & Media Integration
+*   **Firecrawl v2**: Scrapes publication index feeds and extracts raw markdown articles, stripping paywalls, listicles, and clutter.
+*   **Azure OpenAI (Kimi-K2.5)**: Powers the **Autonomous AI Editor** to filter, select, and summarize the best 7-10 stories from the past 24 hours, and compiles them into alternating dual-host scripts.
+*   **OpenRouter (Gemini-3.1-Flash-TTS)**: Synthesizes high-fidelity, expressive natural speech using gender-balanced, localized voice mappings.
+*   **Minio / Cloudflare R2**: Securely hosts public WAV/MP3/OGG podcast files, custom cover arts, and RSS XML feeds.
+
+---
+
+## System Architecture
+
+NewScribe connects two decoupled, highly optimized systems: the **WhatsApp Onboarding Webhook** and the **Autonomous News & Podcast Pipeline**.
+
+```
+                           [ WhatsApp User ]
+                             ▲           │
+                  Outbound   │           │   Inbound Text
+                  Audio/Text │           ▼   (Twilio or Meta JSON)
+                       ┌─────┴───────────┴─────────────┐
+                       │      Twilio / Meta APIs       │
+                       └─────▲───────────┬─────────────┘
+                             │           │ HTTPS POST (/webhook/whatsapp)
+                             │           ▼
+  ┌──────────────────────────┼────────────────────────────────────────────────────────┐
+  │ Go webhook-app           │                                                        │
+  │                          │                                                        │
+  │  ┌───────────────────────┴─┐   ┌──────────────────────────┐   ┌─────────────────┐ │
+  │  │  /webhook/whatsapp      │   │  /visualizer             │   │  /rss/generate  │ │
+  │  │                         │   │  (Control Dashboard)     │   │                 │ │
+  │  │  • Receives texts       │   │  • Plays WAV/MP3/OGG     │   │  • Builds XML   │ │
+  │  │  • Updates preferences  │   │  • Shows transcript      │   │  • Self-heals   │ │
+  │  │  • Replies latest MP3   │   │  • Triggers new drops    │   │  • Uploads S3   │ │
+  │  └─────────────────────────┘   └──────────────────────────┘   └─────────┬───────┘ │
+  │                                                                         │         │
+  │  ┌─────────────────────────┐   ┌──────────────────────────┐             │         │
+  │  │  /tts                   │◄──┤  /publish                │             │         │
+  │  │                         │   │                          │             │         │
+  │  │  • Maps Gemini Voices   │   │  • Saves drafts          │             │         │
+  │  │  • Fetches OpenRouter   │   │  • Sets Titles/Descs     │             │         │
+  │  │  • Concatenates PCM     │   │  • Triggers RSS update   │             │         │
+  │  │  • ffmpeg (MP3/OGG/WAV) │   └──────────────────────────┘             │         │
+  │  └──────────┬──────────────┘                                            │         │
+  └─────────────┼───────────────────────────────────────────────────────────┼─────────┘
+                │ PutObject                                                 │ PutObject
+                ▼                                                           ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────┐
+  │ S3-Compatible Object Storage (Minio Local / Cloudflare R2 Cloud)                   │
+  │  • podcast-covers/   • episode_en_*.mp3/ogg/wav   • feed_en.xml / feed_global.xml │
+  └───────────────────────────────────────────────────────────────────────────────────┘
+                                    ▲
+                                    │ SQL (Query raw / Save Episodes)
+                                    ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────┐
+  │ PostgreSQL (Port: 55432)                                                          │
+  │  • users               • news_items (fingerprint cache)   • episodes (briefs)     │
+  └─────────────────────────────────▲─────────────────────────────────────────────────┘
+                                    │
+                                    │ SQL inserts & selects
+                                    ▼
+  ┌───────────────────────────────────────────────────────────────────────────────────┐
+  │ n8n Workflow Engine (cron trig or manual /api/trigger proxy)                      │
+  │                                                                                   │
+  │   1. Source List ────► 2. Firecrawl Index Scrape ────► 3. Filter Uncached URLs   │
+  │                                                                 │                 │
+  │   5. Azure OpenAI Select & Rank ◄──── 4. Firecrawl Extract ◄────┘                 │
+  │       (7-10 best tech stories)                                                    │
+  │               │                                                                   │
+  │               ▼                                                                   │
+  │   6. LLM Summaries (Cached check) ──► 7. Localized Summaries & Podcast Descriptions│
+  │                                                                                   │
+  │   9. Azure OpenAI Dialogue Assembly ◄─── 8. Prep Multi-Lang Dialogue Prompt       │
+  │      • Alex & Sam (EN)      • Sofia & Marco (IT)                                  │
+  │      • Marie & Pierre (FR)  • Nusrat & Fahim (BN)                                 │
+  │               │                                                                   │
+  │               ▼                                                                   │
+  │   10. Dialogue Flow Review & Schema Guard                                         │
+  │               │                                                                   │
+  │               ▼                                                                   │
+  │   11. HTTP Post (/tts webhook-app) ──► 12. Save Episode ──► 13. Regenerate RSS    │
+  └───────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-Repository integration tests against a real Postgres
-(spins a container via `testcontainers-go` — needs Docker available):
+---
 
+## Podcast Host Personas & Voices
+
+NewScribe features gender-balanced dual-host alternating dialogues tailored to each target language.
+
+| Language | Code | Host 1 (Female) | Host 2 (Male) | Gemini Voices | Description |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **English** | `en` | Alex (Warm & analytical) | Sam (Enthusiastic & tech-savvy) | `Zephyr` (Alex), `Puck` (Sam) | English Tech Briefing |
+| **Italiano** | `it` | Sofia (Warm & analytical) | Marco (Enthusiastic & tech-savvy) | `Kore` (Sofia), `Fenrir` (Marco) | Bollettino Italiano |
+| **Français** | `fr` | Marie (Warm & analytical) | Pierre (Enthusiastic & tech-savvy) | `Leda` (Marie), `Orus` (Pierre) | Briefing Français |
+| **বাংলা** | `bn` | Nusrat (Warm & analytical) | Fahim (Enthusiastic & tech-savvy) | `Aoede` (Nusrat), `Charon` (Fahim) | বাংলা দৈনিক ব্রিফিং |
+
+---
+
+## Local Setup & Installation
+
+### 1. Prerequisites
+Ensure you have the following installed on your machine:
+*   [Docker & Docker Compose](https://docs.docker.com/engine/install/)
+*   An [OpenRouter API Key](https://openrouter.ai/) (required for Gemini TTS rendering)
+*   An [Azure OpenAI Service Endpoint](https://azure.microsoft.com/en-us/products/ai-services/openai-service) (or an equivalent OpenAI-compliant model endpoint)
+
+### 2. Clone and Setup Environment Variables
+Clone the repository and copy the environment template:
 ```sh
-go test -tags=integration ./...
+cp .env.example .env
+```
+Open `.env` and fill in the required keys:
+```env
+# Database Credentials
+POSTGRES_USER=voicescribe
+POSTGRES_PASSWORD=voicescribe_secure_password
+POSTGRES_DB=voicescribe
+
+# Host Port Assignments
+DB_HOST_PORT=55432
+WEBHOOK_HOST_PORT=18080
+N8N_HOST_PORT=15678
+
+# OpenRouter (For Gemini TTS Voice Generation)
+OPENROUTER_API_KEY=your_openrouter_api_key_here
+
+# Firecrawl API Key
+FIRECRAWL_API_KEY=your_firecrawl_api_key_here
+
+# Azure OpenAI Credentials (For Article Selection, Summaries & Script Writing)
+AZURE_OPENAI_ENDPOINT=https://<your-resource-name>.openai.azure.com
+AZURE_OPENAI_DEPLOYMENT=Kimi-K2.5
+AZURE_OPENAI_API_VERSION=2024-12-01-preview
+AZURE_OPENAI_API_KEY=your_azure_openai_key_here
+
+# Twilio & Meta WhatsApp Credentials (Optional)
+TWILIO_ACCOUNT_SID=ACXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
+TWILIO_AUTH_TOKEN=your_twilio_auth_token
+TWILIO_WHATSAPP_NUMBER=whatsapp:+14155238886
+META_WHATSAPP_NUMBER=+14155238886
 ```
 
-## Bring up the full stack
-
+### 3. Build & Launch the Container Stack
+Start the namespaced containers:
 ```sh
 docker compose up --build -d
 ```
+This boots up four services in the isolated `voicescribe-net` network:
+*   `voicescribe-db` (Postgres 15, exposing `55432` to the host).
+*   `voicescribe-webhook` (Go Webhook App, exposing `18080` to the host).
+*   `voicescribe-n8n` (n8n Workflow Engine, exposing `15678` to the host).
+*   `minio` (S3 object storage, if configured locally).
 
-All resources are namespaced under the compose project `voicescribe`
-(containers: `voicescribe-db`, `voicescribe-webhook`, `voicescribe-n8n`;
-network: `voicescribe-net`). Host-side ports are intentionally non-default
-to avoid colliding with any other Postgres / web app / n8n already
-running on the machine:
-
-| Service       | Host port | Container port | Notes                                                          |
-| ------------- | --------- | -------------- | -------------------------------------------------------------- |
-| `db`          | `55432`   | `5432`         | Postgres 15, data persisted to `./_data/postgres`              |
-| `webhook-app` | `18080`   | `8080`         | Go webhook, reads `DATABASE_URL`, runs migrations on boot      |
-| `n8n`         | `15678`   | `5678`         | Workflow engine, pre-loaded with the **News Pipeline V4** |
-
-> **Why `_data/`?** Go's `./...` package walker ignores directories starting
-> with `_` or `.`, so the host-side data dirs (which contain root-owned
-> Postgres files) don't break `go test ./...`.
-
-Health check:
-
+To check the service health:
 ```sh
 curl http://localhost:18080/healthz
-# → ok
+# Output: ok
 ```
 
-Compose-side, `webhook-app` also has a container healthcheck that runs the
-binary itself with `-healthcheck` against `127.0.0.1:8080/healthz` — `docker
-compose ps` will show `(healthy)` once it's serving.
+---
 
-> **Note on the n8n bind mount:** n8n runs as UID 1000 inside the container
-> and needs to own `./_data/n8n` on the host. If you ever wipe and recreate
-> that directory, fix ownership with:
-> ```sh
-> docker run --rm -v "$PWD/_data:/d" alpine chown -R 1000:1000 /d/n8n
-> ```
+## API Endpoints Reference
 
-## Smoke test the webhook
+The Go `webhook-app` exposes a variety of HTTP endpoints to control and visualize the podcast network.
 
-**Twilio-style (form-encoded) inbound — new user asking for the menu:**
+### 1. `GET /visualizer`
+*   **Description**: Serves a premium, responsive web visualizer dashboard (`visualizer.html`).
+*   **Features**: Displays a full list of all created podcast drafts and published episodes, dynamic source attributions, interactive HTML5 audio players for MP3, OGG, and WAV streams, and alternating dialogue transcripts. Includes a "Trigger New Episode" button to launch the pipeline.
 
+### 2. `POST /webhook/whatsapp`
+*   **Description**: Relay endpoint for inbound WhatsApp messages.
+*   **Formats**: Accepts Twilio form-encoded or Meta Cloud API JSON structures.
+*   **Logic**:
+    *   Saves/updates the user's phone number and language selection in the database.
+    *   Triggers Twilio TwiML or Meta reply confirmations returning the latest podcast episode audio.
+
+### 3. `POST /tts`
+*   **Description**: Generates speech audio files from a raw dialogues script.
+*   **Payload**:
+    ```json
+    {
+      "script": [
+        {"speaker": "Alex", "text": "Hello and welcome to NewScribe!"},
+        {"speaker": "Sam", "text": "Hey Alex! Glad to be here."}
+      ],
+      "language": "en",
+      "filename": "episode_en_20260519.wav"
+    }
+    ```
+*   **Logic**: 
+    1. Maps each `speaker` to a native Gemini TTS voice profile.
+    2. Sequentially queries OpenRouter's Speech API.
+    3. Concatenates the PCM chunks into one master stream.
+    4. Invokes `ffmpeg` to encode the PCM into WAV, MP3, and OGG.
+    5. Uploads all three streams to the S3 bucket and returns their public URLs.
+
+### 4. `GET /rss/generate`
+*   **Description**: Compiles and uploads podcast XML feeds.
+*   **Logic**: Iterates through all published database episodes for `en`, `it`, `fr`, `bn`, and a combined `global` stream. Creates an iTunes-compliant XML structure, executes syntax self-healing, and saves it to S3 as `feed_en.xml`, `feed_global.xml`, etc.
+
+### 5. `GET /episodes` or `/api/episodes`
+*   **Description**: Serves a JSON API endpoint returning all episodes in the database.
+*   **Logic**: Dynamically aggregates and maps preceding 2-hour scraped news articles inside the JSON structure.
+
+### 6. `POST /trigger` or `/api/trigger`
+*   **Description**: Proxy endpoint that triggers the n8n News Pipeline workflow.
+*   **Logic**: Calls `http://n8n:5678/webhook/VoiceScribeV4/webhook/trigger-drop`.
+
+### 7. `POST /publish` or `/api/publish`
+*   **Description**: Finalizes and publishes drafts.
+*   **Payload**: `{ "id": 12, "title": "Custom Title", "description": "Episode description." }`
+*   **Logic**: Updates the database status to `published` and immediately refreshes the language RSS feed on S3.
+
+---
+
+## Running & Testing the Pipeline
+
+### Running Unit & Integration Tests
+Run local Go tests:
+```sh
+# Fast unit tests only
+go test ./...
+
+# Full integration database tests (spins up Docker container automatically)
+go test -tags=integration ./...
+```
+
+### Triggering the Podcast Generation Cycle
+You can trigger the pipeline in three ways:
+1.  **Dashboard Control**: Open `http://localhost:18080/visualizer` and click the "Trigger New Episode" button.
+2.  **API Curl**: POST a manual execution request to the Go proxy:
+    ```sh
+    curl -X POST http://localhost:18080/trigger
+    ```
+3.  **n8n Direct Trigger**: Open the n8n editor at `http://localhost:15678/`, find the **VoiceScribe — News Pipeline V4** workflow, and click **Execute Workflow**.
+
+### Smoke Testing WhatsApp Onboarding Webhook
+Simulate Twilio form inbound from an Italian user picking Italian (option 2):
 ```sh
 curl -X POST http://localhost:18080/webhook/whatsapp \
-  --data-urlencode 'From=whatsapp:+391112223333' \
-  --data-urlencode 'Body=Get News'
-```
-
-Reply (TwiML):
-
-```xml
-<Response><Message>Welcome to VoiceScribe. Choose your language: ...</Message></Response>
-```
-
-**Pick Italian (option 2):**
-
-```sh
-curl -X POST http://localhost:18080/webhook/whatsapp \
-  --data-urlencode 'From=whatsapp:+391112223333' \
+  --data-urlencode 'From=whatsapp:+393334445555' \
   --data-urlencode 'Body=2'
 ```
-
-Reply confirms with the placeholder MP3 URL. The user's
-`language_pref` in Postgres is now `it`:
-
-```sh
-docker compose exec db psql -U voicescribe -d voicescribe -c 'SELECT * FROM users;'
+Response (TwiML):
+```xml
+<Response><Message>You're set! Here is your latest update. Next drop in 2 hours. http://localhost:18080/minio/voicescribe-bucket/episode_it_latest.mp3</Message></Response>
 ```
 
-(or from the host: `psql -h localhost -p 55432 -U voicescribe -d voicescribe`)
+---
 
-**Meta Cloud API-style (JSON) inbound:**
-
-```sh
-curl -X POST http://localhost:18080/webhook/whatsapp \
-  -H 'Content-Type: application/json' \
-  -d '{"entry":[{"changes":[{"value":{"messages":[{"from":"391112223333","text":{"body":"1"}}]}}]}]}'
-```
-
-Reply is JSON: `{"reply":"You're set! ..."}`.
-
-## Cloud Deployment
-
-The system is deployed to a remote GCP instance using a reverse proxy (Caddy) for unified access on port 80.
-
-### Deployment Workflow
-The deployment is automated via the `Makefile`. Running `make deploy` locally performs the following:
-1. **File Synchronization**: Uses `rsync` to push source code, configuration files (`Caddyfile`, `docker-compose.yml`), and scripts to the remote server, excluding local data (`_data/`) and secrets.
-2. **Environment Patching**: Generates a temporary `.env` file for the remote server by replacing `localhost` references with the remote's public IP address.
-3. **Remote Orchestration**: Triggers `docker compose up -d --build` on the remote server via SSH to rebuild the webhook app and restart services.
-
-### Infrastructure Structure
-- **Caddy (Port 80)**: Acts as the entry point. It routes traffic based on the URL path:
-  - `http://<IP>/` → Proxies to **n8n** internal port 5678.
-  - `http://<IP>/api/webhook/*` → Proxies to **Webhook App** internal port 8080.
-- **n8n**: The workflow engine, pre-configured via `scripts/n8n-init.sh` to import the **News Pipeline V4** workflow and necessary credentials on startup.
-- **Webhook App**: The Go service that handles WhatsApp interactions.
-- **Postgres**: The database, isolated from direct public access.
-
-### FAQ
-**Is Docker being used correctly?**
-Yes. Docker provides a consistent environment across local development and cloud production. By using a private network (`voicescribe-net`), we ensure that internal services (DB, n8n, Webhook) are not exposed directly to the internet, forcing all traffic through the Caddy proxy for better security and routing.
-
-**How is the public address navigated?**
-Caddy handles "Path Routing". When you visit the IP, Caddy checks the path. If it starts with `/api/webhook/`, it sends it to the Go app. Everything else goes to the n8n UI. This allows multiple services to share a single public IP and port.
-
-**Why no HTTPS right now?**
-We are currently using a raw Public IP for the prototype. SSL certificates (via Let's Encrypt) require a registered domain name (e.g., `api.voicescribe.com`). Once a domain is pointed to the IP, Caddy can be configured to enable HTTPS automatically with a single line change in the `Caddyfile`.
-
-## Roadmap — what's left to reach the full goal
-
-Half of the product — inbound onboarding — exists. The other half — outbound
-audio news drops — is missing. Milestones below are listed in build order;
-M1 unblocks everything downstream.
-
-### M1 — Outbound delivery (the missing half)
-
-- [ ] `internal/notify`: Twilio + Meta send-message clients (text + media)
-- [ ] `POST /broadcast` on `webhook-app`, accepting `{ language, text, mediaUrl }`
-- [ ] New tables: `broadcasts(id, language, text, mp3_url, created_at)` and
-      `deliveries(broadcast_id, phone, status, provider_msg_id, error, sent_at)`
-- [ ] `.env` keys for `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`,
-      `WHATSAPP_FROM`, or `META_PHONE_NUMBER_ID` / `META_ACCESS_TOKEN`
-- [ ] Idempotency on broadcast: same `(broadcast_id, phone)` never sends twice
-
-### M2 — News pipeline (n8n workflows)
-
-- [x] Pick news sources (BBC News, Al Jazeera)
-- [x] Workflow: cron `0 7,13,19 * * *` → fetch → dedupe via Postgres → top 5 stories
-- [x] Extraction: Firecrawl JSON prompt for headline/dek/body
-- [x] LLM summarization node: Azure OpenAI → 220-word spoken script
-- [x] Dual-host assembly: Joe (London DJ) & Jane (SoCal) conversational flow
-- [x] Multi-language support: English, Italian, French, Bangla
-- [ ] TTS per language (ElevenLabs / Azure Speech / Google) → MP3
-- [ ] Upload to object store, capture public URL
-- [ ] HTTP node calls back into `webhook-app /broadcast`
-
-### M3 — Media hosting
-
-- [ ] Choose: Cloudflare R2 / AWS S3 / local volume + sidecar nginx
-- [ ] Verify the URL is GET-able by Twilio/Meta media-fetching IPs
-- [ ] Lifecycle policy (drop MP3s older than ~7 days to control cost)
-
-### M4 — Webhook security
-
-- [ ] Twilio: validate `X-Twilio-Signature` HMAC with auth token before trusting `From`/`Body`
-- [ ] Meta: validate `X-Hub-Signature-256` with the app secret
-- [ ] Meta: `GET /webhook/whatsapp` verify-token handshake
-- [ ] Per-phone rate limit at the edge (e.g. 1 inbound per 2s)
-
-### M5 — Production exposure
-
-- [ ] TLS termination via reverse proxy (Caddy / Traefik) — WhatsApp requires HTTPS
-- [ ] Public DNS name for the webhook
-- [ ] Versioned migrations (`golang-migrate`) — current `migrate.go` is single-statement idempotent
-- [ ] CI: `go test ./...` + integration on push; build & push image on tag
-- [ ] Backup `_data/postgres` (pg_dump cron)
-- [ ] Metrics: Prometheus or OTel → Grafana (request rate, broadcast fanout, send failures)
-
-### M6 — UX polish
-
-- [ ] Localize the welcome menu and reply strings per `language_pref`
-- [ ] `STOP` / `PAUSE` keyword → opt-out flag on user
-- [ ] `LANG` / `CHANGE` keyword → re-show menu without re-onboarding
-- [ ] Time-of-day preference (only send during user's daytime)
-
-### M7 — Scale & cost
-
-- [ ] Cache TTS output per (story × language) — don't regenerate per user
-- [ ] WhatsApp **template messages** for first-touch outbound where required
-- [ ] Per-user delivery throttling to stay under provider rate limits
-- [ ] Cost dashboards: TTS minutes, LLM tokens, WhatsApp message units
-
-## Tear down
-
+## Clean Tear Down
+To stop all services and keep database/storage volume caches:
 ```sh
 docker compose down
-# fully reset local state (Postgres data + n8n config):
+```
+To fully reset local state and wipe Postgres database and Minio S3 bucket storage:
+```sh
+docker compose down
 docker run --rm -v "$PWD:/w" alpine rm -rf /w/_data
 ```
 
-## Project layout
+---
 
-```
-cmd/webhook/main.go                       entrypoint: env → db → repo → handler → http.Server
-                                          + slog setup, -healthcheck flag, request logger
-internal/db/migrate.go                    CREATE TABLE IF NOT EXISTS users (...)
-internal/users/repo.go                    UserRepository interface + PgUserRepository
-internal/users/fake.go                    InMemoryUserRepository for handler tests
-internal/users/repo_integration_test.go   testcontainers-go Postgres test (build tag: integration)
-internal/webhook/parser.go                ParseInbound — Twilio form OR Meta JSON
-internal/webhook/handler.go               POST /webhook/whatsapp logic + TwiML/JSON reply
-.env.example                              committed template for production overrides
-docker-compose.yml                        namespaced under `voicescribe` project
-Dockerfile                                multi-stage, CGO off, alpine runner
-```
+## License & Public Distribution Terms
+
+This project is released under the **NewScribe Source-Available License (Personal & Internal Business Use Only)**. 
+
+Under the terms of this license:
+*   **Allowed**: You are free to run, copy, modify, and distribute the Software for **Personal Use** (hobbyist, educational, non-commercial) and **Internal Business Use** (within your own organization's internal workflows).
+*   **Prohibited**: You may **not** distribute or sublicense the Software for commercial profit, use it to offer a hosted/managed service (SaaS), or deploy it to compete directly or indirectly with the Licensor.
+
+See the complete terms and legal details in the [LICENSE](./LICENSE) file.

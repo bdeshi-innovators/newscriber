@@ -1,0 +1,47 @@
+NewScribe Source-Available License (Personal & Internal Business Use Only)
+
+Version 1.0, May 2026
+Copyright (c) 2026 bdeshi-innovators / NewScribe Authors. All rights reserved.
+
+TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+1. DEFINITIONS
+
+"License" shall mean the terms and conditions for use, reproduction, and distribution as defined by Sections 1 through 6 of this document.
+
+"Licensor" shall mean the copyright owner or entity authorized by the copyright owner that is granting the License (bdeshi-innovators / NewScribe).
+
+"Software" shall mean the source code, object code, documentation, workflows, and scripts associated with the NewScribe project contained within this repository, including any derivative works or modifications thereto.
+
+"You" (or "Your") shall mean an individual or Legal Entity exercising permissions granted by this License.
+
+"Personal Use" shall mean use of the Software by an individual solely for personal, educational, non-commercial, and hobbyist purposes.
+
+"Internal Business Use" shall mean use of the Software by You or Your organization solely for Your own internal business operations (e.g., automated news ingestion and delivery for internal teams or employees), provided that such use is not used to generate direct revenue from third parties or compete with the Licensor.
+
+2. GRANT OF LICENSE
+
+Subject to the terms and conditions of this License, Licensor hereby grants You a worldwide, royalty-free, non-exclusive, non-sublicensable, revocable license to:
+a) Use, run, copy, and modify the Software for Your own Personal Use.
+b) Use, run, copy, and modify the Software for Your own Internal Business Use.
+
+3. RESTRICTIONS AND PROHIBITIONS
+
+The license grant in Section 2 is subject to Your compliance with the following strict limitations. Any violation of these restrictions will automatically terminate this License and Your right to use the Software immediately.
+
+a) No Commercial Distribution: You may not sell, rent, lease, sublicense, redistribute, or otherwise transfer the Software (modified or unmodified), or any portion thereof, to any third party for profit, commercial gain, or monetary exchange.
+b) No Software-as-a-Service (SaaS) or Hosting: You may not use the Software, or any modified version thereof, to provide a commercial service, hosted service, API, managed service, or Software-as-a-Service (SaaS) that exposes the Software's features or utilities to third parties.
+c) No Competitive Use: You may not use the Software, or any derivative works thereof, to build, support, or run a product or service that competes directly or indirectly with the commercial offerings of the Licensor.
+d) Attribution: You must retain, in the source code and in any user interface of all copies of the Software that You run or distribute, all copyright, trademark, patent, and attribution notices originally present in the Software.
+
+4. DERIVATIVE WORKS
+
+If You modify the Software or create derivative works of it, those modifications and derivative works remain subject to all the terms, conditions, and restrictions of this License. You may not distribute derivative works under any other license terms.
+
+5. TERMINATION
+
+This License and the rights granted hereunder will terminate automatically and immediately if You fail to comply with any of its terms or conditions. Upon termination, You must immediately cease all use, reproduction, and distribution of the Software and destroy all copies in Your possession.
+
+6. DISCLAIMER OF WARRANTY & LIMITATION OF LIABILITY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
