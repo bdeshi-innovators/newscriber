@@ -658,7 +658,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at) VALUES ('en', '{{ $node[\"Review (English)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW());"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at, episode_number) VALUES ('en', '{{ $node[\"Review (English)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
       },
       "id": "pg-save-en",
       "name": "Save (English)",
@@ -678,7 +678,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at) VALUES ('it', '{{ $node[\"Review (Italian)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW());"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at, episode_number) VALUES ('it', '{{ $node[\"Review (Italian)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
       },
       "id": "pg-save-it",
       "name": "Save (Italian)",
@@ -698,7 +698,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at) VALUES ('fr', '{{ $node[\"Review (French)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW());"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at, episode_number) VALUES ('fr', '{{ $node[\"Review (French)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
       },
       "id": "pg-save-fr",
       "name": "Save (French)",
@@ -718,7 +718,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at) VALUES ('bn', '{{ $node[\"Review (Bangla)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW());"
+        "query": "=INSERT INTO episodes (language, script, mp3_url, ogg_url, wav_url, tts_at, created_at, episode_number) VALUES ('bn', '{{ $node[\"Review (Bangla)\"].json.choices[0].message.content.replace(/'/g, \"''\") }}', '{{ $json.mp3_url }}', '{{ $json.ogg_url }}', '{{ $json.wav_url }}', NOW(), NOW(), {{ $node[\"Postgres: Get next episode number\"].json.next_episode_number }});"
       },
       "id": "pg-save-bn",
       "name": "Save (Bangla)",
@@ -838,6 +838,26 @@
         2600,
         1000
       ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COALESCE(MAX(episode_number), 0) + 1 AS next_episode_number FROM episodes;"
+      },
+      "id": "pg-get-next-episode-num",
+      "name": "Postgres: Get next episode number",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        900,
+        350
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
     }
   ],
   "connections": {
@@ -933,7 +953,7 @@
       "main": [
         [
           {
-            "node": "Postgres: Read raw articles",
+            "node": "Postgres: Get next episode number",
             "type": "main",
             "index": 0
           }
@@ -941,6 +961,17 @@
         [
           {
             "node": "Firecrawl: extract article",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Get next episode number": {
+      "main": [
+        [
+          {
+            "node": "Postgres: Read raw articles",
             "type": "main",
             "index": 0
           }

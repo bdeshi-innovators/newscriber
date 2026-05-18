@@ -8,12 +8,13 @@ import (
 )
 
 type EpisodeRow struct {
-	ID          int64
-	Script      string
-	MP3URL      string
-	CreatedAt   time.Time
-	Title       string
-	Description string
+	ID            int64
+	Script        string
+	MP3URL        string
+	CreatedAt     time.Time
+	Title         string
+	Description   string
+	EpisodeNumber int
 }
 
 func (h *Handler) UpdateRSSFeed(ctx context.Context, lang string) error {
@@ -21,7 +22,7 @@ func (h *Handler) UpdateRSSFeed(ctx context.Context, lang string) error {
 
 	// 1. Fetch latest episodes for the language (limit to latest 50 to keep feed size lean)
 	rows, err := h.db.QueryContext(ctx, 
-		"SELECT id, script, mp3_url, created_at, COALESCE(title, '') as title, COALESCE(description, '') as description FROM episodes WHERE language = $1 AND mp3_url IS NOT NULL AND status = 'published' ORDER BY created_at DESC LIMIT 50;", 
+		"SELECT id, script, mp3_url, created_at, COALESCE(title, '') as title, COALESCE(description, '') as description, episode_number FROM episodes WHERE language = $1 AND mp3_url IS NOT NULL AND status = 'published' ORDER BY created_at DESC LIMIT 50;", 
 		lang,
 	)
 	if err != nil {
@@ -32,7 +33,7 @@ func (h *Handler) UpdateRSSFeed(ctx context.Context, lang string) error {
 	var episodes []EpisodeRow
 	for rows.Next() {
 		var ep EpisodeRow
-		if err := rows.Scan(&ep.ID, &ep.Script, &ep.MP3URL, &ep.CreatedAt, &ep.Title, &ep.Description); err != nil {
+		if err := rows.Scan(&ep.ID, &ep.Script, &ep.MP3URL, &ep.CreatedAt, &ep.Title, &ep.Description, &ep.EpisodeNumber); err != nil {
 			return fmt.Errorf("scan episode: %w", err)
 		}
 		episodes = append(episodes, ep)
@@ -105,7 +106,7 @@ func (h *Handler) buildRSSXML(lang string, episodes []EpisodeRow) string {
 		pubDate := ep.CreatedAt.Format(time.RFC1123Z)
 		epTitle := ep.Title
 		if epTitle == "" {
-			epTitle = fmt.Sprintf("NewScriber %s - Episode #%d", langTitle, ep.ID)
+			epTitle = fmt.Sprintf("NewScriber %s - Episode #%d", langTitle, ep.EpisodeNumber)
 		}
 
 		xml += `    <item>
