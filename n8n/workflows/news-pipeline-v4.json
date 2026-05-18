@@ -786,7 +786,7 @@
         "url": "http://webhook-app:8080/tts",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content).dialogues, language: 'en', filename: 'episode_en_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
+        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim()).dialogues, language: 'en', filename: 'episode_en_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
         "options": {}
       },
       "id": "fcbfee6b",
@@ -804,7 +804,7 @@
         "url": "http://webhook-app:8080/tts",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content).dialogues, language: 'it', filename: 'episode_it_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
+        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim()).dialogues, language: 'it', filename: 'episode_it_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
         "options": {}
       },
       "id": "2880ca67",
@@ -822,7 +822,7 @@
         "url": "http://webhook-app:8080/tts",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content).dialogues, language: 'fr', filename: 'episode_fr_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
+        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim()).dialogues, language: 'fr', filename: 'episode_fr_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
         "options": {}
       },
       "id": "b52799b9",
@@ -840,7 +840,7 @@
         "url": "http://webhook-app:8080/tts",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content).dialogues, language: 'bn', filename: 'episode_bn_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
+        "jsonBody": "={{ { script: JSON.parse($json.choices[0].message.content.replace(/```json/gi, '').replace(/```/g, '').trim()).dialogues, language: 'bn', filename: 'episode_bn_' + $now.toFormat('yyyyMMdd_HHmm') + '.wav' } }}",
         "options": {}
       },
       "id": "3bccbdb5",
