@@ -1,6 +1,6 @@
-# NewScribe (formerly VoiceScribe) — Multilingual Automated News Briefing & Podcast Network
+# NewScriber (formerly VoiceScribe) — Multilingual Automated News Briefing & Podcast Network
 
-NewScribe is a high-fidelity, autonomous, end-to-end multilingual AI news editor, podcast scriptwriter, and voice briefing delivery network. 
+NewScriber is a high-fidelity, autonomous, end-to-end multilingual AI news editor, podcast scriptwriter, and voice briefing delivery network. 
 
 The system automates the entire ingestion-to-ear pipeline: it extracts tech and business news from multiple websites using **Firecrawl**, selects and ranks the best stories using an **Azure OpenAI-powered Editor Agent**, summarizes them, compiles them into natural dual-host conversational podcast scripts, renders lifelike synthetic voice dialogues using **Gemini TTS via OpenRouter**, transcodes the audio into multiple high-quality formats (WAV, MP3, OGG) using **ffmpeg**, hosts them on **Minio/Cloudflare R2**, generates self-healing **iTunes-compliant RSS feeds**, serves a beautiful web **Visualizer Dashboard**, and delivers briefings directly to subscribed users via **WhatsApp webhooks**.
 
@@ -8,7 +8,7 @@ The system automates the entire ingestion-to-ear pipeline: it extracts tech and 
 
 ## Core Stack & Technologies
 
-NewScribe is fully containerized, secure, and optimized for both local development and remote cloud deployments.
+NewScriber is fully containerized, secure, and optimized for both local development and remote cloud deployments.
 
 ### 1. Go Webhook & Orchestration Engine (`webhook-app`)
 *   **Performance & Concatenation**: Acts as the central high-performance server. It processes incoming WhatsApp webhook payloads (supporting both Twilio and Meta Cloud API formats), handles user registrations in PostgreSQL, orchestrates TTS audio renders, transcodes raw PCM data, and serves the Web Visualizer.
@@ -37,7 +37,7 @@ NewScribe is fully containerized, secure, and optimized for both local developme
 
 ## System Architecture
 
-NewScribe connects two decoupled, highly optimized systems: the **WhatsApp Onboarding Webhook** and the **Autonomous News & Podcast Pipeline**.
+NewScriber connects two decoupled, highly optimized systems: the **WhatsApp Onboarding Webhook** and the **Autonomous News & Podcast Pipeline**.
 
 ```
                            [ WhatsApp User ]
@@ -112,7 +112,7 @@ NewScribe connects two decoupled, highly optimized systems: the **WhatsApp Onboa
 
 ## Podcast Host Personas & Voices
 
-NewScribe features gender-balanced dual-host alternating dialogues tailored to each target language.
+NewScriber features gender-balanced dual-host alternating dialogues tailored to each target language.
 
 | Language | Code | Host 1 (Female) | Host 2 (Male) | Gemini Voices | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- |
@@ -207,7 +207,7 @@ The Go `webhook-app` exposes a variety of HTTP endpoints to control and visualiz
     ```json
     {
       "script": [
-        {"speaker": "Alex", "text": "Hello and welcome to NewScribe!"},
+        {"speaker": "Alex", "text": "Hello and welcome to NewScriber!"},
         {"speaker": "Sam", "text": "Hey Alex! Glad to be here."}
       ],
       "language": "en",
@@ -290,7 +290,7 @@ docker run --rm -v "$PWD:/w" alpine rm -rf /w/_data
 
 ## License & Public Distribution Terms
 
-This project is released under the **NewScribe Source-Available License (Personal & Internal Business Use Only)**. 
+This project is released under the **NewScriber Source-Available License (Personal & Internal Business Use Only)**. 
 
 Under the terms of this license:
 *   **Allowed**: You are free to run, copy, modify, and distribute the Software for **Personal Use** (hobbyist, educational, non-commercial) and **Internal Business Use** (within your own organization's internal workflows).

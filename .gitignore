@@ -9,3 +9,5 @@
 .vscode/
 newscribe.pem
 /artifacts/
+.agent/
+.claude/
