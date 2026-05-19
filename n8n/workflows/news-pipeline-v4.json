@@ -346,7 +346,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT fingerprint, headline, llm_summary, source_name FROM news_items WHERE fingerprint IN ({{ $('Filter Selected').all().map(i => \"'\" + i.json.fingerprint + \"'\").join(',') }});"
+        "query": "=WITH updated AS (UPDATE news_items SET summarized_at = NOW() WHERE fingerprint IN ({{ $('Filter Selected').all().map(i => \"'\" + i.json.fingerprint + \"'\").join(',') || \"''\" }}) RETURNING fingerprint, headline, llm_summary, source_name) SELECT fingerprint, headline, llm_summary, source_name FROM updated;"
       },
       "id": "pg-read-summaries",
       "name": "Postgres: Read summaries",
@@ -391,7 +391,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $('Postgres: Read summaries').all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'Italian';\nconst code = 'it';\nconst hour = new Date().getHours();\nlet timeRef = 'oggi';\nif (hour >= 5 && hour < 12) timeRef = 'questa mattina';\nelse if (hour >= 12 && hour < 17) timeRef = 'questo pomeriggio';\nelse if (hour >= 17 && hour < 22) timeRef = 'stasera';\nconst systemPrompt = `You are a podcast scriptwriter for 'NewScriber'. Assemble these summaries into a 2-person conversation in ${targetLang}. The dialogue MUST be strictly between exactly two speakers: Sofia (female host, warm and analytical) and Marco (male host, enthusiastic and tech-savvy). Ensure a gender-balanced conversation with alternating dialogue lines. Start the podcast intro by welcoming the listeners to NewScriber. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Output the script as a raw JSON array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+        "jsCode": "const reviewNode = $('Review (English)').first().json;\nlet rawContent = reviewNode.choices[0].message.content || '';\nrawContent = rawContent.replace(/^```(?:json)?\\n/i, '').replace(/\\n```$/i, '').trim();\n\nlet englishScript;\ntry {\n  englishScript = JSON.parse(rawContent);\n} catch (e) {\n  throw new Error(`Failed to parse English script: ${e.message}`);\n}\n\nconst targetLang = 'Italian';\nconst code = 'it';\nconst systemPrompt = `You are a professional translator and script localizer for 'NewScriber'. Your task is to translate and localize the provided English 2-person podcast script into ${targetLang}.\n\nCRITICAL RULES:\n1. Keep the exact same dialogue structure, order of stories, turn-taking, and news content. Do not add, omit, or change any of the facts.\n2. Translate the dialogue text into natural, spoken, and professional ${targetLang}.\n3. Map the speakers exactly as follows:\n   - 'Alex' MUST be translated/mapped to 'Sofia' (female host, warm and analytical).\n   - 'Sam' MUST be translated/mapped to 'Marco' (male host, enthusiastic and tech-savvy).\n4. Output the result as a raw JSON object with a single key 'dialogues' containing an array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\n\nconst userContent = JSON.stringify(englishScript);\nreturn [{ json: { language: code, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature: 0.3 } } }];"
       },
       "id": "prep-it",
       "name": "Prepare (Italian)",
@@ -404,7 +404,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $('Postgres: Read summaries').all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'French';\nconst code = 'fr';\nconst hour = new Date().getHours();\nlet timeRef = 'aujourd\\'hui';\nif (hour >= 5 && hour < 12) timeRef = 'ce matin';\nelse if (hour >= 12 && hour < 17) timeRef = 'cet après-midi';\nelse if (hour >= 17 && hour < 22) timeRef = 'ce soir';\nconst systemPrompt = `You are a podcast scriptwriter for 'NewScriber'. Assemble these summaries into a 2-person conversation in ${targetLang}. The dialogue MUST be strictly between exactly two speakers: Marie (female host, warm and analytical) and Pierre (male host, enthusiastic and tech-savvy). Ensure a gender-balanced conversation with alternating dialogue lines. Start the podcast intro by welcoming the listeners to NewScriber. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Output the script as a raw JSON array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+        "jsCode": "const reviewNode = $('Review (English)').first().json;\nlet rawContent = reviewNode.choices[0].message.content || '';\nrawContent = rawContent.replace(/^```(?:json)?\\n/i, '').replace(/\\n```$/i, '').trim();\n\nlet englishScript;\ntry {\n  englishScript = JSON.parse(rawContent);\n} catch (e) {\n  throw new Error(`Failed to parse English script: ${e.message}`);\n}\n\nconst targetLang = 'French';\nconst code = 'fr';\nconst systemPrompt = `You are a professional translator and script localizer for 'NewScriber'. Your task is to translate and localize the provided English 2-person podcast script into ${targetLang}.\n\nCRITICAL RULES:\n1. Keep the exact same dialogue structure, order of stories, turn-taking, and news content. Do not add, omit, or change any of the facts.\n2. Translate the dialogue text into natural, spoken, and professional ${targetLang}.\n3. Map the speakers exactly as follows:\n   - 'Alex' MUST be translated/mapped to 'Marie' (female host, warm and analytical).\n   - 'Sam' MUST be translated/mapped to 'Pierre' (male host, enthusiastic and tech-savvy).\n4. Output the result as a raw JSON object with a single key 'dialogues' containing an array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\n\nconst userContent = JSON.stringify(englishScript);\nreturn [{ json: { language: code, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature: 0.3 } } }];"
       },
       "id": "prep-fr",
       "name": "Prepare (French)",
@@ -417,7 +417,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const items = $('Postgres: Read summaries').all();\nconst script = items.map(i => i.json.llm_summary).join('\\n\\n---\\n\\n');\nconst targetLang = 'Bangla';\nconst code = 'bn';\nconst hour = new Date().getHours();\nlet timeRef = 'আজ'; // today\nif (hour >= 5 && hour < 12) timeRef = 'আজ সকালে'; // this morning\nelse if (hour >= 12 && hour < 17) timeRef = 'আজ দুপুরে'; // this afternoon\nelse if (hour >= 17 && hour < 22) timeRef = 'আজ সন্ধ্যায়'; // tonight\nconst systemPrompt = `You are a podcast scriptwriter for 'NewScriber'. Assemble these summaries into a 2-person conversation in ${targetLang}. The dialogue MUST be strictly between exactly two speakers: Nusrat (female host, warm and analytical) and Fahim (male host, enthusiastic and tech-savvy). Ensure a gender-balanced conversation with alternating dialogue lines. Start the podcast intro by welcoming the listeners to NewScriber. Use the time reference '${timeRef}' in the intro to anchor the podcast in the present moment. Output the script as a raw JSON array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\nreturn [{ json: { language: code, summaries: items.length, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: script }], temperature: 0.7 } } }];"
+        "jsCode": "const reviewNode = $('Review (English)').first().json;\nlet rawContent = reviewNode.choices[0].message.content || '';\nrawContent = rawContent.replace(/^```(?:json)?\\n/i, '').replace(/\\n```$/i, '').trim();\n\nlet englishScript;\ntry {\n  englishScript = JSON.parse(rawContent);\n} catch (e) {\n  throw new Error(`Failed to parse English script: ${e.message}`);\n}\n\nconst targetLang = 'Bangla';\nconst code = 'bn';\nconst systemPrompt = `You are a professional translator and script localizer for 'NewScriber'. Your task is to translate and localize the provided English 2-person podcast script into ${targetLang}.\n\nCRITICAL RULES:\n1. Keep the exact same dialogue structure, order of stories, turn-taking, and news content. Do not add, omit, or change any of the facts.\n2. Translate the dialogue text into natural, spoken, and professional ${targetLang}.\n3. Map the speakers exactly as follows:\n   - 'Alex' MUST be translated/mapped to 'Nusrat' (female host, warm and analytical).\n   - 'Sam' MUST be translated/mapped to 'Fahim' (male host, enthusiastic and tech-savvy).\n4. Output the result as a raw JSON object with a single key 'dialogues' containing an array of objects, with each object having 'speaker' and 'text' keys. Do NOT use markdown code blocks.`;\n\nconst userContent = JSON.stringify(englishScript);\nreturn [{ json: { language: code, llm_payload: { messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userContent }], temperature: 0.3 } } }];"
       },
       "id": "prep-bn",
       "name": "Prepare (Bangla)",
@@ -1179,21 +1179,6 @@
             "node": "Prepare (English)",
             "type": "main",
             "index": 0
-          },
-          {
-            "node": "Prepare (Italian)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Prepare (French)",
-            "type": "main",
-            "index": 0
-          },
-          {
-            "node": "Prepare (Bangla)",
-            "type": "main",
-            "index": 0
           }
         ]
       ]
@@ -1225,6 +1210,21 @@
         [
           {
             "node": "TTS (English)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare (Italian)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare (French)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare (Bangla)",
             "type": "main",
             "index": 0
           }

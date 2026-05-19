@@ -100,7 +100,7 @@ type TTSRequest struct {
 // Map localized speakers to Gemini voices
 var voiceMapping = map[string]map[string]string{
 	"en": {"Alex": "Zephyr", "Sam": "Puck"},
-	"it": {"Marco": "Fenrir", "Sofia": "Kore"},
+	"it": {"Marco": "Umbriel", "Sofia": "Kore"},
 	"fr": {"Pierre": "Orus", "Marie": "Leda"},
 	"bn": {"Fahim": "Charon", "Nusrat": "Aoede"},
 }

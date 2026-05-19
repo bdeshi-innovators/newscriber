@@ -117,7 +117,7 @@ NewScribe features gender-balanced dual-host alternating dialogues tailored to e
 | Language | Code | Host 1 (Female) | Host 2 (Male) | Gemini Voices | Description |
 | :--- | :--- | :--- | :--- | :--- | :--- |
 | **English** | `en` | Alex (Warm & analytical) | Sam (Enthusiastic & tech-savvy) | `Zephyr` (Alex), `Puck` (Sam) | English Tech Briefing |
-| **Italiano** | `it` | Sofia (Warm & analytical) | Marco (Enthusiastic & tech-savvy) | `Kore` (Sofia), `Fenrir` (Marco) | Bollettino Italiano |
+| **Italiano** | `it` | Sofia (Warm & analytical) | Marco (Enthusiastic & tech-savvy) | `Kore` (Sofia), `Umbriel` (Marco) | Bollettino Italiano |
 | **Français** | `fr` | Marie (Warm & analytical) | Pierre (Enthusiastic & tech-savvy) | `Leda` (Marie), `Orus` (Pierre) | Briefing Français |
 | **বাংলা** | `bn` | Nusrat (Warm & analytical) | Fahim (Enthusiastic & tech-savvy) | `Aoede` (Nusrat), `Charon` (Fahim) | বাংলা দৈনিক ব্রিফিং |
 

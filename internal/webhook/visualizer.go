@@ -51,7 +51,7 @@ func (h *Handler) HandleEpisodes(w http.ResponseWriter, r *http.Request) {
 		               'url', n.article_url
 		           )), '[]'::json)
 		           FROM news_items n
-		           WHERE n.summarized_at BETWEEN e.created_at - INTERVAL '2 hours' AND e.created_at
+		           WHERE n.summarized_at BETWEEN e.created_at - INTERVAL '6 hours' AND e.created_at + INTERVAL '30 minutes'
 		       ) as articles
 		FROM episodes e
 		ORDER BY e.created_at DESC;
