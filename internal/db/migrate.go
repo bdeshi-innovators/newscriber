@@ -75,6 +75,29 @@ ALTER TABLE episodes ADD COLUMN IF NOT EXISTS title TEXT;
 ALTER TABLE episodes ADD COLUMN IF NOT EXISTS description TEXT;
 ALTER TABLE episodes ADD COLUMN IF NOT EXISTS status VARCHAR(20) NOT NULL DEFAULT 'published';
 ALTER TABLE episodes ADD COLUMN IF NOT EXISTS episode_number INTEGER;
+
+-- Body-update tracking: lets the pipeline detect when an existing article's
+-- content has actually changed (vs. a stable URL being re-scraped). The
+-- pipeline reuses cached summaries when body_updated_at <= summarized_at.
+ALTER TABLE news_items ADD COLUMN IF NOT EXISTS body_hash TEXT;
+ALTER TABLE news_items ADD COLUMN IF NOT EXISTS body_updated_at TIMESTAMPTZ;
+
+-- Per-region airing record. Each schedule trigger (London / Rome+Paris /
+-- Dhaka) is an independent edition with its own listener base, so the dedup
+-- boundary is (fingerprint, region), not just fingerprint. Lets the same
+-- story be aired across regions while preventing stale repeats within one
+-- region.
+CREATE TABLE IF NOT EXISTS news_item_airings (
+    fingerprint    TEXT        NOT NULL REFERENCES news_items(fingerprint) ON DELETE CASCADE,
+    region         TEXT        NOT NULL CHECK (region IN ('london','rome_paris','dhaka')),
+    last_rank      INTEGER,
+    first_aired_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    last_aired_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    aired_count    INTEGER     NOT NULL DEFAULT 1,
+    PRIMARY KEY (fingerprint, region)
+);
+CREATE INDEX IF NOT EXISTS news_item_airings_topup
+    ON news_item_airings (region, last_rank, last_aired_at);
 `
 
 func Migrate(ctx context.Context, conn *sql.DB) error {

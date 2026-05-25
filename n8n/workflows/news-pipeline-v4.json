@@ -74,7 +74,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [\n  { json: { url: 'https://techcrunch.com', source: 'TechCrunch' } },\n  { json: { url: 'https://venturebeat.com', source: 'VentureBeat' } },\n  { json: { url: 'https://www.technologyreview.com', source: 'MIT Tech Review' } }\n];"
+        "jsCode": "const region = ($input.first() && $input.first().json && $input.first().json.region) || 'manual';\nreturn [\n  { json: { url: 'https://techcrunch.com', source: 'TechCrunch', region } },\n  { json: { url: 'https://venturebeat.com', source: 'VentureBeat', region } },\n  { json: { url: 'https://www.technologyreview.com', source: 'MIT Tech Review', region } }\n];"
       },
       "id": "src-list",
       "name": "Source list",
@@ -175,7 +175,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO news_items (fingerprint, headline, body, source_name, article_url, language, scraped_at) VALUES ('{{ $node[\"Per article\"].json.fingerprint }}', '{{ $json.data.metadata.title.replace(/'/g, \"''\") }}', '{{ $json.data.markdown.replace(/'/g, \"''\") }}', '{{ $node[\"Per article\"].json.source_name }}', '{{ $node[\"Per article\"].json.url }}', 'en', NOW()) ON CONFLICT (fingerprint) DO NOTHING;"
+        "query": "=INSERT INTO news_items (fingerprint, headline, body, source_name, article_url, language, scraped_at, body_hash, body_updated_at) VALUES ('{{ $node[\"Per article\"].json.fingerprint }}', '{{ $json.data.metadata.title.replace(/'/g, \"''\") }}', '{{ $json.data.markdown.replace(/'/g, \"''\") }}', '{{ $node[\"Per article\"].json.source_name }}', '{{ $node[\"Per article\"].json.url }}', 'en', NOW(), md5('{{ $json.data.markdown.replace(/'/g, \"''\") }}'), NOW()) ON CONFLICT (fingerprint) DO UPDATE SET scraped_at = NOW(), headline = EXCLUDED.headline, body = EXCLUDED.body, body_hash = EXCLUDED.body_hash, body_updated_at = CASE WHEN news_items.body_hash IS DISTINCT FROM EXCLUDED.body_hash THEN NOW() ELSE news_items.body_updated_at END;"
       },
       "id": "pg-save-raw",
       "name": "Postgres: Save raw article",
@@ -195,7 +195,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "SELECT fingerprint, headline, body, source_name, llm_summary FROM news_items WHERE scraped_at >= NOW() - INTERVAL '24 hours' ORDER BY id DESC LIMIT 40;"
+        "query": "=SELECT n.fingerprint, n.headline, n.body, n.source_name, n.llm_summary, n.body_updated_at, n.summarized_at, a.last_rank, a.last_aired_at, a.first_aired_at, (a.fingerprint IS NOT NULL) AS is_repeat, (a.fingerprint IS NOT NULL AND n.body_updated_at > a.last_aired_at) AS has_update, (n.llm_summary IS NULL OR n.llm_summary = '' OR n.summarized_at IS NULL  OR n.body_updated_at > n.summarized_at) AS needs_resummary FROM news_items n LEFT JOIN news_item_airings a ON a.fingerprint = n.fingerprint AND a.region = '{{ $('Source list').first().json.region }}' WHERE n.fingerprint IN ({{ $('Filter article URLs').all().map(i => \"'\" + i.json.fingerprint + \"'\").join(',') || \"''\" }}) AND (a.fingerprint IS NULL OR n.body_updated_at > a.last_aired_at) ORDER BY (a.fingerprint IS NULL) DESC, a.last_rank ASC NULLS LAST, n.scraped_at DESC;"
       },
       "id": "pg-read-raw",
       "name": "Postgres: Read raw articles",
@@ -214,7 +214,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const MAX_ARTICLES = 10;\nconst MIN_ARTICLES = 7;\nconst items = $input.all();\n\nconst systemPrompt = [\n  `You are an autonomous AI news editor. Your task is to select the BEST articles for a daily briefing targeting busy tech professionals and business leaders.`,\n  ``,\n  `CRITICAL RULES — YOU MUST FOLLOW THESE EXACTLY:`,\n  `1. You MUST select a MINIMUM of ${MIN_ARTICLES} articles and a MAXIMUM of ${MAX_ARTICLES} articles.`,\n  `2. Selecting fewer than ${MIN_ARTICLES} or more than ${MAX_ARTICLES} is a VIOLATION. Do not do it.`,\n  `3. Rank by: business impact, novelty, and relevance to tech industry.`,\n  `4. Exclude: paywalled articles, listicles, press releases, and opinion pieces with no news value.`,\n  `5. Output ONLY valid JSON with exactly two keys:`,\n  `   - \"selected_fingerprints\": an array of EXACTLY ${MIN_ARTICLES}–${MAX_ARTICLES} fingerprint strings`,\n  `   - \"rationale\": one short sentence explaining the selection`\n].join('\\n');\n\nconst userContent = [\n  `Here are ${items.length} articles to evaluate. Select between ${MIN_ARTICLES} and ${MAX_ARTICLES} of them.`,\n  ``,\n  JSON.stringify(items.map(i => ({ fingerprint: i.json.fingerprint, headline: i.json.headline, source: i.json.source_name }))),\n  ``,\n  `REMINDER: Your response MUST contain between ${MIN_ARTICLES} and ${MAX_ARTICLES} fingerprints in selected_fingerprints. Not more, not fewer.`\n].join('\\n');\n\nconst payload = {\n  messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: userContent }\n  ],\n  temperature: 0,\n  response_format: { type: 'json_object' }\n};\nreturn [{ json: { llm_payload: payload, max_articles: MAX_ARTICLES, min_articles: MIN_ARTICLES } }];"
+        "jsCode": "const MAX_ARTICLES = 10;\nconst MIN_ARTICLES = 7;\nconst items = $input.all();\n\nconst systemPrompt = [\n  `You are an autonomous AI news editor. Your task is to select the BEST articles for a daily briefing targeting busy tech professionals and business leaders.`,\n  ``,\n  `CRITICAL RULES — YOU MUST FOLLOW THESE EXACTLY:`,\n  `1. You MUST select a MINIMUM of ${MIN_ARTICLES} articles and a MAXIMUM of ${MAX_ARTICLES} articles.`,\n  `2. Selecting fewer than ${MIN_ARTICLES} or more than ${MAX_ARTICLES} is a VIOLATION. Do not do it.`,\n  `3. Rank by: business impact, novelty, and relevance to tech industry.`,\n  `4. Exclude: paywalled articles, listicles, press releases, and opinion pieces with no news value.`,\n  `5. PREFER articles where is_repeat is false (fresh in this region). Only include articles where is_repeat is true if has_update is true — those are genuine updates worth re-airing. NEVER select an article where is_repeat is true and has_update is false; those are stale repeats.`,\n  `6. Output ONLY valid JSON with exactly two keys:`,\n  `   - \"selected_fingerprints\": an array of EXACTLY ${MIN_ARTICLES}–${MAX_ARTICLES} fingerprint strings`,\n  `   - \"rationale\": one short sentence explaining the selection`\n].join('\\n');\n\nconst userContent = [\n  `Here are ${items.length} articles to evaluate. Select between ${MIN_ARTICLES} and ${MAX_ARTICLES} of them.`,\n  ``,\n  JSON.stringify(items.map(i => ({\n    fingerprint: i.json.fingerprint,\n    headline: i.json.headline,\n    source: i.json.source_name,\n    is_repeat: !!i.json.is_repeat,\n    has_update: !!i.json.has_update,\n    first_aired_at: i.json.first_aired_at || null\n  }))),\n  ``,\n  `REMINDER: Your response MUST contain between ${MIN_ARTICLES} and ${MAX_ARTICLES} fingerprints in selected_fingerprints. Not more, not fewer.`\n].join('\\n');\n\nconst payload = {\n  messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: userContent }\n  ],\n  temperature: 0,\n  response_format: { type: 'json_object' }\n};\nreturn [{ json: { llm_payload: payload, max_articles: MAX_ARTICLES, min_articles: MIN_ARTICLES } }];"
       },
       "id": "build-editor-payload",
       "name": "Build Editor Payload",
@@ -256,7 +256,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const input = $input.first().json;\nlet rawContent = input.choices[0].message.content || '';\nrawContent = rawContent.replace(/^```(?:json)?\\n/i, '').replace(/\\n```$/i, '').trim();\n\nlet decision;\ntry {\n  decision = JSON.parse(rawContent);\n} catch (e) {\n  throw new Error(`Failed to parse LLM response as JSON. Raw content: ${JSON.stringify(rawContent)}`);\n}\nlet fps = decision.selected_fingerprints;\nif (!Array.isArray(fps)) fps = [];\n\nconst maxArticles = $('Build Editor Payload').first().json.max_articles || 10;\nconst selectedFps = new Set(fps.slice(0, maxArticles));\n\n// Fetch the original items from Postgres node to get the full bodies back\nconst allItems = $('Postgres: Read raw articles').all();\nconst selected = allItems.filter(i => i.json.fingerprint && selectedFps.has(i.json.fingerprint));\n\nconst capped = selected.slice(0, maxArticles);\nconst targetLength = Math.max(30, Math.floor(350 / Math.max(1, capped.length)));\nreturn capped.map(i => ({ json: { ...i.json, target_length: targetLength } }));"
+        "jsCode": "const input = $input.first().json;\nlet rawContent = input.choices[0].message.content || '';\nrawContent = rawContent.replace(/^```(?:json)?\\n/i, '').replace(/\\n```$/i, '').trim();\n\nlet decision;\ntry {\n  decision = JSON.parse(rawContent);\n} catch (e) {\n  throw new Error(`Failed to parse LLM response as JSON. Raw content: ${JSON.stringify(rawContent)}`);\n}\nlet fps = decision.selected_fingerprints;\nif (!Array.isArray(fps)) fps = [];\n\nconst maxArticles = $('Build Editor Payload').first().json.max_articles || 10;\nconst orderedFps = fps.slice(0, maxArticles);\nconst rankByFp = new Map(orderedFps.map((fp, idx) => [fp, idx + 1]));\n\n// Preserve the editor's selection order so rank tracks LLM ranking.\nconst allItems = $('Postgres: Read raw articles').all();\nconst byFp = new Map(allItems.map(i => [i.json.fingerprint, i.json]));\nconst selected = orderedFps\n  .map(fp => byFp.get(fp))\n  .filter(Boolean);\n\nconst targetLength = Math.max(30, Math.floor(350 / Math.max(1, selected.length)));\nreturn selected.map(rawItem => ({\n  json: {\n    ...rawItem,\n    rank: rankByFp.get(rawItem.fingerprint),\n    target_length: targetLength\n  }\n}));"
       },
       "id": "filter-selected",
       "name": "Filter Selected",
@@ -283,7 +283,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const item = $json;\nconst payload = {\n  messages: [\n    { role: 'system', content: `Summarize this article in exactly ${item.target_length} words for a podcast anchor targeting business leaders. Keep it concise, action-oriented, and focus on the business impact. Spoken prose, professional tone.` },\n    { role: 'user', content: `Headline: ${item.headline}\\n\\nContent: ${item.body}` }\n  ],\n  temperature: 0.7\n};\nreturn [{ json: { ...item, llm_payload: payload } }];"
+        "jsCode": "const item = $json;\n\nlet firstAiredLabel = null;\nif (item.first_aired_at) {\n  try {\n    firstAiredLabel = new Date(item.first_aired_at).toISOString().slice(0, 10);\n  } catch (e) {\n    firstAiredLabel = null;\n  }\n}\n\nlet systemPrompt;\nif (item.is_repeat && item.has_update) {\n  systemPrompt = `Summarize this article in approximately ${item.target_length} words for a podcast anchor targeting business leaders. This story has been aired before in this region${firstAiredLabel ? ' (first reported ' + firstAiredLabel + ')' : ''}; the body has been updated since then. Open with \"Update on [topic]${firstAiredLabel ? ' (first reported ' + firstAiredLabel + ')' : ''}:\" and focus on what is genuinely new. Keep it concise, action-oriented, business-impact focused. Spoken prose, professional tone.`;\n} else if (item.is_repeat && !item.has_update) {\n  // Safety net — editor should not have selected this. Drop the item so\n  // it never reaches Azure OpenAI with a missing payload.\n  return [];\n} else {\n  systemPrompt = `Summarize this article in exactly ${item.target_length} words for a podcast anchor targeting business leaders. Keep it concise, action-oriented, and focus on the business impact. Spoken prose, professional tone.`;\n}\n\nconst payload = {\n  messages: [\n    { role: 'system', content: systemPrompt },\n    { role: 'user', content: `Headline: ${item.headline}\\n\\nContent: ${item.body}` }\n  ],\n  temperature: 0.7\n};\nreturn [{ json: { ...item, llm_payload: payload } }];"
       },
       "id": "summary-payload",
       "name": "Build Summary Payload",
@@ -870,7 +870,7 @@
     {
       "parameters": {
         "operation": "executeQuery",
-        "query": "=SELECT fingerprint FROM news_items WHERE fingerprint IN ({{ $input.all().map(i => \"'\" + i.json.fingerprint + \"'\").join(',') || \"''\" }});"
+        "query": "=SELECT n.fingerprint, n.body_hash, n.body_updated_at, a.last_rank, a.last_aired_at, a.first_aired_at FROM news_items n LEFT JOIN news_item_airings a ON a.fingerprint = n.fingerprint AND a.region = '{{ $('Source list').first().json.region }}' WHERE n.fingerprint IN ({{ $input.all().map(i => \"'\" + i.json.fingerprint + \"'\").join(',') || \"''\" }});"
       },
       "id": "pg-check-existing",
       "name": "Postgres: Check existing",
@@ -889,7 +889,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const allUrls = $('Filter article URLs').all();\nconst existingRows = $('Postgres: Check existing').all();\nconst existingFps = new Set(existingRows.map(r => r.json.fingerprint));\n\nreturn allUrls.filter(u => u.json.fingerprint && !existingFps.has(u.json.fingerprint));"
+        "jsCode": "const allUrls = $('Filter article URLs').all();\nconst existingRows = $('Postgres: Check existing').all();\nconst existingByFp = new Map(existingRows.map(r => [r.json.fingerprint, r.json]));\n\n// Top-rank articles in THIS region are eligible for re-scrape so we can\n// detect body updates. Cooldown prevents hammering Firecrawl on the same URL.\nconst TOP_RANK = 3;\nconst COOLDOWN_HOURS = 2;\n\nreturn allUrls.filter(u => {\n  const existing = existingByFp.get(u.json.fingerprint);\n  if (!existing) return true;\n  if (existing.last_rank == null || existing.last_rank > TOP_RANK) return false;\n  const lastHit = existing.last_aired_at ? new Date(existing.last_aired_at) : null;\n  if (lastHit && (Date.now() - lastHit.getTime()) < COOLDOWN_HOURS * 3600 * 1000) return false;\n  return true;\n});"
       },
       "id": "filter-uncached",
       "name": "Filter uncached URLs",
@@ -910,11 +910,12 @@
           },
           "conditions": [
             {
-              "id": "summary-empty-check",
-              "leftValue": "={{ $json.llm_summary }}",
+              "id": "summary-needs-resummary-check",
+              "leftValue": "={{ $json.needs_resummary }}",
+              "rightValue": true,
               "operator": {
-                "type": "string",
-                "operation": "isEmpty"
+                "type": "boolean",
+                "operation": "equals"
               }
             }
           ],
@@ -930,6 +931,78 @@
         1750,
         150
       ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { region: 'london' } }];"
+      },
+      "id": "set-region-manual",
+      "name": "Set Region (Manual)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { region: 'london' } }];"
+      },
+      "id": "set-region-london",
+      "name": "Set Region (London)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { region: 'rome_paris' } }];"
+      },
+      "id": "set-region-rome",
+      "name": "Set Region (Rome/Paris)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        350
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { region: 'dhaka' } }];"
+      },
+      "id": "set-region-dhaka",
+      "name": "Set Region (Dhaka)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -300,
+        650
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "=INSERT INTO news_item_airings (fingerprint, region, last_rank, last_aired_at, first_aired_at, aired_count) SELECT v.fp, '{{ $('Source list').first().json.region }}', v.r, NOW(), NOW(), 1 FROM (VALUES {{ $('Filter Selected').all().map(i => `('${i.json.fingerprint}', ${i.json.rank})`).join(',') }}) AS v(fp, r) ON CONFLICT (fingerprint, region) DO UPDATE SET last_rank = EXCLUDED.last_rank, last_aired_at = NOW(), aired_count = news_item_airings.aired_count + 1;"
+      },
+      "id": "pg-persist-airings",
+      "name": "Postgres: Persist airings",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2.4,
+      "position": [
+        2750,
+        400
+      ],
+      "credentials": {
+        "postgres": {
+          "id": "PG_CRED",
+          "name": "VoiceScribe Postgres"
+        }
+      }
     }
   ],
   "connections": {
@@ -937,7 +1010,7 @@
       "main": [
         [
           {
-            "node": "Source list",
+            "node": "Set Region (Manual)",
             "type": "main",
             "index": 0
           }
@@ -948,7 +1021,7 @@
       "main": [
         [
           {
-            "node": "Source list",
+            "node": "Set Region (London)",
             "type": "main",
             "index": 0
           }
@@ -959,7 +1032,7 @@
       "main": [
         [
           {
-            "node": "Source list",
+            "node": "Set Region (Rome/Paris)",
             "type": "main",
             "index": 0
           }
@@ -970,7 +1043,7 @@
       "main": [
         [
           {
-            "node": "Source list",
+            "node": "Set Region (Dhaka)",
             "type": "main",
             "index": 0
           }
@@ -1396,7 +1469,7 @@
       "main": [
         [
           {
-            "node": "Regenerate RSS Feeds",
+            "node": "Postgres: Persist airings",
             "type": "main",
             "index": 0
           }
@@ -1470,6 +1543,61 @@
         [
           {
             "node": "Per article for summary",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Region (Manual)": {
+      "main": [
+        [
+          {
+            "node": "Source list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Region (London)": {
+      "main": [
+        [
+          {
+            "node": "Source list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Region (Rome/Paris)": {
+      "main": [
+        [
+          {
+            "node": "Source list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set Region (Dhaka)": {
+      "main": [
+        [
+          {
+            "node": "Source list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres: Persist airings": {
+      "main": [
+        [
+          {
+            "node": "Regenerate RSS Feeds",
             "type": "main",
             "index": 0
           }
