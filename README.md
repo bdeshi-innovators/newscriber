@@ -2,7 +2,7 @@
 
 NewScriber is a high-fidelity, autonomous, end-to-end multilingual AI news editor, podcast scriptwriter, and voice briefing delivery network. 
 
-The system automates the entire ingestion-to-ear pipeline: it extracts tech and business news from multiple websites using **Firecrawl**, selects and ranks the best stories using an **Azure OpenAI-powered Editor Agent**, summarizes them, compiles them into natural dual-host conversational podcast scripts, renders lifelike synthetic voice dialogues using **Gemini TTS via OpenRouter**, transcodes the audio into multiple high-quality formats (WAV, MP3, OGG) using **ffmpeg**, hosts them on **Minio/Cloudflare R2**, generates self-healing **iTunes-compliant RSS feeds**, serves a beautiful web **Visualizer Dashboard**, and delivers briefings directly to subscribed users via **WhatsApp webhooks**.
+The system automates the entire ingestion-to-ear pipeline: it extracts tech and business news from multiple websites using **Firecrawl**, selects and ranks the best stories using an **Azure OpenAI-powered Editor Agent**, summarizes them, compiles them into natural dual-host conversational podcast scripts, renders lifelike synthetic voice dialogues using **Gemini TTS via OpenRouter**, transcodes the audio into multiple high-quality formats (WAV, MP3, OGG) using **ffmpeg**, hosts them on **Minio/Cloudflare R2**, generates self-healing **iTunes-compliant RSS feeds**, and serves a beautiful web **Visualizer Dashboard**.
 
 ---
 
