@@ -36,6 +36,42 @@ REGION_EXPR = "{{ $('Source list').first().json.region }}"
 
 # ---------- node patches (keyed by node id) ----------
 
+FILTER_URLS_JS = """const data = $input.first().json;
+const source = $('Source list').first().json.source;
+const links = (data.data && data.data.links) ? data.data.links : [];
+const MAX_ARTICLES = 10;  // 10 per source x 3 sources = 30 total candidates
+
+const hash = (s) => {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  return (h >>> 0).toString(16);
+};
+
+return links.slice(0, MAX_ARTICLES).map(url => ({
+  json: { url, source_name: source, fingerprint: hash(url) }
+}));"""
+
+BARRIER_JS = """// Barrier: emit input items exactly once per workflow execution.
+// Source list outputs 3 items (TechCrunch / VentureBeat / MIT Tech Review).
+// That fan-out causes the editor -> save -> persist-airings chain to fire
+// 2-3 times per execution, producing duplicate episodes. This barrier
+// collapses those repeated firings to a single forward pass.
+const staticData = $getWorkflowStaticData('node');
+staticData.seenExecs = staticData.seenExecs || {};
+if (staticData.seenExecs[$execution.id]) {
+  return [];
+}
+staticData.seenExecs[$execution.id] = Date.now();
+// Keep static data bounded: drop entries older than 1 day.
+const cutoff = Date.now() - 86400000;
+for (const k of Object.keys(staticData.seenExecs)) {
+  if (staticData.seenExecs[k] < cutoff) delete staticData.seenExecs[k];
+}
+return $input.all();"""
+
 PG_CHECK_EXISTING_QUERY = (
     "=SELECT n.fingerprint, n.body_hash, n.body_updated_at, "
     "a.last_rank, a.last_aired_at, a.first_aired_at "
@@ -234,12 +270,19 @@ SUMMARY_CACHED_CONDITIONS = {
 }
 
 PERSIST_AIRINGS_QUERY = (
+    # GROUP BY v.fp collapses duplicate (fingerprint, rank) pairs that can
+    # appear when the editor LLM picks the same article twice or when an
+    # upstream node aggregates across multiple firings. Without this, the
+    # INSERT trips PostgreSQL's "ON CONFLICT DO UPDATE command cannot affect
+    # row a second time" rule. MIN(r) keeps the best (lowest) rank when
+    # duplicates exist.
     "=INSERT INTO news_item_airings "
     "(fingerprint, region, last_rank, last_aired_at, first_aired_at, aired_count) "
-    "SELECT v.fp, '" + REGION_EXPR + "', v.r, NOW(), NOW(), 1 "
+    "SELECT v.fp, '" + REGION_EXPR + "', MIN(v.r) AS r, NOW(), NOW(), 1 "
     "FROM (VALUES "
     "{{ $('Filter Selected').all().map(i => `('${i.json.fingerprint}', ${i.json.rank})`).join(',') }}"
     ") AS v(fp, r) "
+    "GROUP BY v.fp "
     "ON CONFLICT (fingerprint, region) DO UPDATE SET "
     "last_rank = EXCLUDED.last_rank, "
     "last_aired_at = NOW(), "
@@ -263,9 +306,20 @@ def main() -> int:
 
     # --- 1 & 12a. Add Set Region nodes; rewire triggers ---
     for trigger_name, (sr_name, sr_id, region, pos) in REGION_BY_TRIGGER.items():
+        # Manual Run reads REGION env var (default 'london') so a single
+        # `docker compose exec -e REGION=<region> n8n n8n execute --id …`
+        # can simulate any region's cron fire. Schedule triggers stay
+        # hardcoded to their region.
+        if trigger_name == 'Manual Run':
+            js = (
+                "const region = ($env && $env.REGION) || '" + region + "';\n"
+                "return [{ json: { region } }];"
+            )
+        else:
+            js = f"return [{{ json: {{ region: '{region}' }} }}];"
         nodes.append({
             "parameters": {
-                "jsCode": f"return [{{ json: {{ region: '{region}' }} }}];"
+                "jsCode": js
             },
             "id": sr_id,
             "name": sr_name,
@@ -292,6 +346,31 @@ def main() -> int:
         "  { json: { url: 'https://www.technologyreview.com', source: 'MIT Tech Review', region } }\n"
         "];"
     )
+
+    # --- (new) Reduce per-source scrape from 25 to 10 articles ---
+    find_node(nodes, node_id='filter-urls')['parameters']['jsCode'] = FILTER_URLS_JS
+
+    # --- (new) Insert "Barrier: once per exec" between Per article (done) and
+    # Postgres: Get next episode number. Collapses Source-list fan-out so the
+    # editor runs exactly once per execution.
+    if not any(n.get('id') == 'barrier-once-per-exec' for n in nodes):
+        nodes.append({
+            "parameters": {"jsCode": BARRIER_JS},
+            "id": "barrier-once-per-exec",
+            "name": "Barrier: once per exec",
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [950, 350]
+        })
+    # Rewire Per article output[0] to barrier, and barrier to Get next episode num.
+    conns["Per article"]["main"][0] = [
+        {"node": "Barrier: once per exec", "type": "main", "index": 0}
+    ]
+    conns["Barrier: once per exec"] = {
+        "main": [[
+            {"node": "Postgres: Get next episode number", "type": "main", "index": 0}
+        ]]
+    }
 
     # --- 3. pg-check-existing query ---
     find_node(nodes, node_id='pg-check-existing')['parameters']['query'] = PG_CHECK_EXISTING_QUERY

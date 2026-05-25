@@ -117,7 +117,7 @@
     },
     {
       "parameters": {
-        "jsCode": "const data = $input.first().json;\nconst source = $('Source list').first().json.source;\nconst links = (data.data && data.data.links) ? data.data.links : [];\nconst MAX_ARTICLES = 25;\n\nconst hash = (s) => {\n  let h = 0x811c9dc5;\n  for (let i = 0; i < s.length; i++) {\n    h ^= s.charCodeAt(i);\n    h = Math.imul(h, 0x01000193);\n  }\n  return (h >>> 0).toString(16);\n};\n\nreturn links.slice(0, MAX_ARTICLES).map(url => ({\n  json: { url, source_name: source, fingerprint: hash(url) }\n}));"
+        "jsCode": "const data = $input.first().json;\nconst source = $('Source list').first().json.source;\nconst links = (data.data && data.data.links) ? data.data.links : [];\nconst MAX_ARTICLES = 10;  // 10 per source x 3 sources = 30 total candidates\n\nconst hash = (s) => {\n  let h = 0x811c9dc5;\n  for (let i = 0; i < s.length; i++) {\n    h ^= s.charCodeAt(i);\n    h = Math.imul(h, 0x01000193);\n  }\n  return (h >>> 0).toString(16);\n};\n\nreturn links.slice(0, MAX_ARTICLES).map(url => ({\n  json: { url, source_name: source, fingerprint: hash(url) }\n}));"
       },
       "id": "filter-urls",
       "name": "Filter article URLs",
@@ -934,7 +934,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return [{ json: { region: 'london' } }];"
+        "jsCode": "const region = ($env && $env.REGION) || 'london';\nreturn [{ json: { region } }];"
       },
       "id": "set-region-manual",
       "name": "Set Region (Manual)",
@@ -986,8 +986,21 @@
     },
     {
       "parameters": {
+        "jsCode": "// Barrier: emit input items exactly once per workflow execution.\n// Source list outputs 3 items (TechCrunch / VentureBeat / MIT Tech Review).\n// That fan-out causes the editor -> save -> persist-airings chain to fire\n// 2-3 times per execution, producing duplicate episodes. This barrier\n// collapses those repeated firings to a single forward pass.\nconst staticData = $getWorkflowStaticData('node');\nstaticData.seenExecs = staticData.seenExecs || {};\nif (staticData.seenExecs[$execution.id]) {\n  return [];\n}\nstaticData.seenExecs[$execution.id] = Date.now();\n// Keep static data bounded: drop entries older than 1 day.\nconst cutoff = Date.now() - 86400000;\nfor (const k of Object.keys(staticData.seenExecs)) {\n  if (staticData.seenExecs[k] < cutoff) delete staticData.seenExecs[k];\n}\nreturn $input.all();"
+      },
+      "id": "barrier-once-per-exec",
+      "name": "Barrier: once per exec",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        950,
+        350
+      ]
+    },
+    {
+      "parameters": {
         "operation": "executeQuery",
-        "query": "=INSERT INTO news_item_airings (fingerprint, region, last_rank, last_aired_at, first_aired_at, aired_count) SELECT v.fp, '{{ $('Source list').first().json.region }}', v.r, NOW(), NOW(), 1 FROM (VALUES {{ $('Filter Selected').all().map(i => `('${i.json.fingerprint}', ${i.json.rank})`).join(',') }}) AS v(fp, r) ON CONFLICT (fingerprint, region) DO UPDATE SET last_rank = EXCLUDED.last_rank, last_aired_at = NOW(), aired_count = news_item_airings.aired_count + 1;"
+        "query": "=INSERT INTO news_item_airings (fingerprint, region, last_rank, last_aired_at, first_aired_at, aired_count) SELECT v.fp, '{{ $('Source list').first().json.region }}', MIN(v.r) AS r, NOW(), NOW(), 1 FROM (VALUES {{ $('Filter Selected').all().map(i => `('${i.json.fingerprint}', ${i.json.rank})`).join(',') }}) AS v(fp, r) GROUP BY v.fp ON CONFLICT (fingerprint, region) DO UPDATE SET last_rank = EXCLUDED.last_rank, last_aired_at = NOW(), aired_count = news_item_airings.aired_count + 1;"
       },
       "id": "pg-persist-airings",
       "name": "Postgres: Persist airings",
@@ -1092,7 +1105,7 @@
       "main": [
         [
           {
-            "node": "Postgres: Get next episode number",
+            "node": "Barrier: once per exec",
             "type": "main",
             "index": 0
           }
@@ -1587,6 +1600,17 @@
         [
           {
             "node": "Source list",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Barrier: once per exec": {
+      "main": [
+        [
+          {
+            "node": "Postgres: Get next episode number",
             "type": "main",
             "index": 0
           }
