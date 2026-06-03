@@ -1336,6 +1336,10 @@
                 width: 100%;
             }
 
+            .detail-meta-title {
+                font-size: 1.4rem;
+            }
+
             .detail-meta-subtitle {
                 justify-content: center;
             }
@@ -2232,7 +2236,7 @@
                 <div class="detail-header">
                     ${coverImgHTML}
                     <div class="detail-header-info">
-                        <h1 class="detail-meta-title" style="margin: 0 0 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${ep.title || defaultTitle}</h1>
+                        <h1 class="detail-meta-title" style="margin: 0 0 4px 0;">${ep.title || defaultTitle}</h1>
                         <div class="detail-meta-subtitle">
                             <span>Drop ID: #${ep.id}</span>
                             <span>•</span>
