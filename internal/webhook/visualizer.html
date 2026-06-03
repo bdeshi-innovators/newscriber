@@ -1086,6 +1086,344 @@
             color: var(--text-body);
             line-height: 1.4;
         }
+
+        /* Responsive Overrides & Utility Classes */
+        .header-controls {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 6px 12px;
+            border-radius: 30px;
+            backdrop-filter: blur(10px);
+            transition: var(--transition-smooth);
+        }
+
+        .rss-group {
+            gap: 8px;
+        }
+
+        .trigger-group {
+            gap: 12px;
+        }
+
+        .control-select {
+            background: rgba(18, 17, 15, 0.85);
+            color: #ECE8DF;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 15px;
+            padding: 6px 10px;
+            font-size: 0.8rem;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            outline: none;
+            transition: var(--transition-smooth);
+        }
+
+        .control-select:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+            background: rgba(30, 28, 25, 0.95);
+        }
+
+        .chk-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.75rem;
+            color: #9A958F;
+            cursor: pointer;
+            font-family: 'Outfit', sans-serif;
+            user-select: none;
+            transition: var(--transition-smooth);
+        }
+
+        .chk-label:hover {
+            color: #ECE8DF;
+        }
+
+        .btn-workflow {
+            padding: 8px 16px;
+            font-size: 0.8rem;
+            border-radius: 20px;
+            box-shadow: 0 4px 15px rgba(196, 59, 43, 0.3);
+            border: 1px solid rgba(196, 59, 43, 0.4);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .trigger-group {
+            display: none !important;
+        }
+
+        .player-close-btn {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 6px;
+            border-radius: 50%;
+            transition: var(--transition-smooth);
+            z-index: 110;
+        }
+
+        .player-close-btn:hover {
+            color: var(--text-heading);
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        .curation-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+        }
+
+        @media (max-width: 1200px) {
+            header {
+                padding: 30px 20px 20px;
+            }
+            main {
+                padding: 20px;
+            }
+        }
+
+        @media (max-width: 992px) {
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 20px;
+                padding: 24px 20px 16px;
+            }
+
+            .header-icon {
+                position: absolute;
+                top: 24px;
+                right: 20px;
+            }
+
+            .header-controls {
+                width: 100%;
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .control-group {
+                width: 100%;
+                border-radius: 16px;
+                padding: 8px 14px;
+            }
+
+            .rss-group {
+                justify-content: space-between;
+            }
+
+            .rss-group select {
+                flex-grow: 1;
+            }
+
+            .trigger-group {
+                flex-wrap: wrap;
+                justify-content: space-between;
+                gap: 10px;
+            }
+
+            .trigger-group select {
+                flex-grow: 1;
+                min-width: 120px;
+            }
+
+            .chk-label {
+                flex-shrink: 0;
+            }
+
+            .btn-workflow {
+                width: 100%;
+                justify-content: center;
+                margin-top: 4px;
+            }
+
+            .workspace {
+                grid-template-columns: 1fr;
+                gap: 24px;
+            }
+
+            .panel-header {
+                padding: 16px 20px;
+            }
+
+            .episodes-list {
+                max-height: 500px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            main {
+                padding: 16px;
+                gap: 24px;
+            }
+
+            .brand-logo {
+                font-size: 1.8rem;
+            }
+
+            .brand-tagline {
+                font-size: 0.95rem;
+                max-width: 320px;
+            }
+
+            .regions-grid {
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+
+            .region-card {
+                padding: 18px;
+                min-height: 180px;
+            }
+
+            .region-play-btn {
+                opacity: 1;
+                transform: scale(1);
+                bottom: 18px;
+                right: 18px;
+            }
+
+            .detail-panel {
+                padding: 16px;
+                gap: 20px;
+            }
+
+            .detail-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 16px;
+            }
+
+            .detail-actions {
+                width: 100%;
+            }
+
+            .detail-actions button,
+            .detail-actions a {
+                width: 100%;
+                justify-content: center;
+            }
+
+            .curation-card {
+                padding: 16px;
+                border-radius: 12px;
+                margin-bottom: 20px;
+            }
+
+            .dialogue-row {
+                max-width: 95%;
+            }
+
+            .dialogue-row.speaker-right {
+                max-width: 95%;
+            }
+
+            /* Sticky Player Mobile Optimization */
+            .sticky-player {
+                padding: 8px 12px 10px;
+            }
+
+            .player-close-btn {
+                top: 8px;
+                right: 12px;
+                padding: 4px;
+            }
+
+            .player-inner {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 8px 12px;
+                align-items: center;
+            }
+
+            .player-info {
+                grid-column: 1 / -1;
+                grid-row: 1;
+                width: 100%;
+                min-width: 0;
+                padding-right: 28px; /* leave room for close button */
+            }
+
+            .player-controls-container {
+                display: contents;
+            }
+
+            .player-timeline {
+                grid-column: 1 / -1;
+                grid-row: 2;
+                width: 100%;
+            }
+
+            .player-controls {
+                grid-column: 1;
+                grid-row: 3;
+                justify-self: flex-start;
+                gap: 12px;
+            }
+
+            .control-btn svg {
+                width: 18px;
+                height: 18px;
+            }
+
+            .control-btn-play {
+                width: 36px;
+                height: 36px;
+            }
+
+            .control-btn-play svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .player-options {
+                grid-column: 2;
+                grid-row: 3;
+                width: 100%;
+                justify-content: flex-end;
+                gap: 10px;
+                min-width: 0;
+            }
+
+            .format-btn {
+                padding: 3px 6px;
+                font-size: 0.65rem;
+            }
+
+            .btn-download-icon {
+                padding: 6px;
+            }
+
+            .btn-download-icon svg {
+                width: 14px;
+                height: 14px;
+            }
+
+            .volume-controls {
+                display: none !important;
+            }
+        }
     </style>
 </head>
 <body>
@@ -1106,10 +1444,10 @@
             </div>
         </div>
         
-        <div style="display: flex; gap: 15px; align-items: center;">
+        <div class="header-controls">
             <!-- RSS Feed Download Group -->
-            <div style="display: flex; align-items: center; gap: 8px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 30px; backdrop-filter: blur(10px);">
-                <select id="select-rss-feed" style="background: rgba(18, 17, 15, 0.85); color: #ECE8DF; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 15px; padding: 6px 10px; font-size: 0.8rem; font-family: 'Outfit', sans-serif; cursor: pointer; outline: none;">
+            <div class="control-group rss-group">
+                <select id="select-rss-feed" class="control-select">
                     <option value="" disabled selected>🎙️ RSS Feeds</option>
                     <option value="global">🌍 Global Feed</option>
                     <option value="en">🇬🇧 English Feed</option>
@@ -1123,9 +1461,9 @@
             </div>
 
             <!-- Trigger Workflow Group -->
-            <div style="display: flex; align-items: center; gap: 12px; background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); padding: 6px 12px; border-radius: 30px; backdrop-filter: blur(10px);">
+            <div class="control-group trigger-group">
                 <!-- Language Dropdown -->
-                <select id="select-trigger-lang" style="background: rgba(18, 17, 15, 0.85); color: #ECE8DF; border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 15px; padding: 6px 10px; font-size: 0.8rem; font-family: 'Outfit', sans-serif; cursor: pointer; outline: none;">
+                <select id="select-trigger-lang" class="control-select">
                     <option value="all">⚡ All Regions</option>
                     <option value="en">🇬🇧 London (EN)</option>
                     <option value="it">🇮🇹 Rome (IT)</option>
@@ -1134,28 +1472,27 @@
                 </select>
 
                 <!-- Auto-Publish Toggle -->
-                <label style="display: flex; align-items: center; gap: 6px; font-size: 0.75rem; color: #9A958F; cursor: pointer; font-family: 'Outfit', sans-serif; user-select: none;">
+                <label class="chk-label">
                     <input type="checkbox" id="chk-auto-publish" checked style="accent-color: #C43B2B; cursor: pointer; width: 14px; height: 14px;">
                     <span>Auto-Publish</span>
                 </label>
 
-                <button class="btn btn-primary" id="btn-trigger-workflow" onclick="triggerWorkflow()" style="padding: 8px 16px; font-size: 0.8rem; border-radius: 20px; box-shadow: 0 4px 15px rgba(196, 59, 43, 0.3); border: 1px solid rgba(196, 59, 43, 0.4); display: flex; align-items: center; gap: 6px;">
+                <button class="btn btn-primary btn-workflow" id="btn-trigger-workflow" onclick="triggerWorkflow()">
                     <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="fill: currentColor;"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     <span>Trigger Fresh Drop</span>
                 </button>
             </div>
         </div>
             
-            <div class="header-icon">
-                <!-- Sleek Column lines icon matching branding monogram -->
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <rect x="4" y="6" width="3" height="12" rx="1.5" fill="#ECE8DF"/>
-                    <rect x="10" y="6" width="10" height="2" rx="1" fill="#ECE8DF"/>
-                    <rect x="10" y="11" width="10" height="2" rx="1" fill="#ECE8DF"/>
-                    <rect x="10" y="16" width="6" height="2" rx="1" fill="#ECE8DF"/>
-                    <circle cx="18" cy="17" r="1.5" fill="#C43B2B"/>
-                </svg>
-            </div>
+        <div class="header-icon">
+            <!-- Sleek Column lines icon matching branding monogram -->
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect x="4" y="6" width="3" height="12" rx="1.5" fill="#ECE8DF"/>
+                <rect x="10" y="6" width="10" height="2" rx="1" fill="#ECE8DF"/>
+                <rect x="10" y="11" width="10" height="2" rx="1" fill="#ECE8DF"/>
+                <rect x="10" y="16" width="6" height="2" rx="1" fill="#ECE8DF"/>
+                <circle cx="18" cy="17" r="1.5" fill="#C43B2B"/>
+            </svg>
         </div>
     </header>
 
@@ -1295,6 +1632,12 @@
 
     <!-- Sticky bottom audio player -->
     <div class="sticky-player" id="sticky-player">
+        <button id="btn-player-close" class="player-close-btn" title="Close Player">
+            <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round">
+                <line x1="18" y1="6" x2="6" y2="18"></line>
+                <line x1="6" y1="6" x2="18" y2="18"></line>
+            </svg>
+        </button>
         <div class="player-inner">
             <!-- Left: Info -->
             <div class="player-info">
@@ -1798,7 +2141,7 @@
             if (isDraft) {
                 curationHTML = `
                     <!-- Sleek Glassmorphic Curation Workspace card -->
-                    <div style="background: rgba(255, 255, 255, 0.02); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; padding: 24px; margin-bottom: 24px; box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);">
+                    <div class="curation-card">
                         <h3 class="section-title" style="margin-top: 0;">
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>
                             <span>Episode Editorial Curation Workspace</span>
@@ -1899,6 +2242,14 @@
                     </div>
                 </div>
             `;
+
+            // Scroll workspace panel into view on mobile/tablet
+            if (window.innerWidth <= 992) {
+                const parentPanel = detailPanel.closest('.panel');
+                if (parentPanel) {
+                    parentPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            }
         }
 
         // Quick shortcut: play the latest episode for a given language
@@ -2083,6 +2434,15 @@
         }
 
         function initUIControls() {
+            // Player Close Button
+            document.getElementById('btn-player-close').onclick = () => {
+                audioCore.pause();
+                audioCore.src = '';
+                isPlaying = false;
+                updatePlayToggleUI();
+                stickyPlayer.classList.remove('visible');
+            };
+
             // Play/Pause Action Toggle
             playToggle.onclick = () => {
                 if (!audioCore.src) return;
