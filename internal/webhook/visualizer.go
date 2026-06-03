@@ -13,6 +13,39 @@ import (
 //go:embed visualizer.html
 var visualizerHTML []byte
 
+//go:embed favicon.ico
+var faviconICO []byte
+
+//go:embed favicon.png
+var faviconPNG []byte
+
+//go:embed favicon.svg
+var faviconSVG []byte
+
+// HandleFavicon serves the embedded favicon.ico.
+func (h *Handler) HandleFavicon(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/x-icon")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(faviconICO)
+}
+
+// HandleFaviconPNG serves the embedded favicon.png.
+func (h *Handler) HandleFaviconPNG(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(faviconPNG)
+}
+
+// HandleFaviconSVG serves the embedded favicon.svg.
+func (h *Handler) HandleFaviconSVG(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/svg+xml")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(faviconSVG)
+}
+
 // HandleVisualizer serves the embedded high-fidelity HTML visualizer dashboard.
 func (h *Handler) HandleVisualizer(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
