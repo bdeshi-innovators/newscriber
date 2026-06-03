@@ -2,7 +2,7 @@
 newscriber.unityflow.ai {
     # Webhook App routes
     @webhook_routes {
-        path /api/* /visualizer* /trigger* /publish* /episodes*
+        path /api/* /visualizer* /trigger* /publish* /episodes* /favicon.ico /favicon.png /favicon.svg
     }
     handle @webhook_routes {
         reverse_proxy webhook-app:8080
@@ -35,7 +35,7 @@ newscriber.unityflow.ai {
 http://localhost, http://127.0.0.1 {
     # Webhook App routes
     @webhook_routes {
-        path /api/* /visualizer* /trigger* /publish* /episodes*
+        path /api/* /visualizer* /trigger* /publish* /episodes* /favicon.ico /favicon.png /favicon.svg
     }
     handle @webhook_routes {
         reverse_proxy webhook-app:8080
