@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>NewScriber. | Episode Visualizer Dashboard</title>
     
+    <!-- Favicon -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
+    <link rel="icon" type="image/png" sizes="256x256" href="/favicon.png">
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+    
     <!-- Premium Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -483,10 +488,15 @@
 
         .detail-header {
             display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
+            gap: 16px;
+            align-items: center;
             border-bottom: 1px solid var(--border-glow);
             padding-bottom: 20px;
+        }
+
+        .detail-header-info {
+            flex-grow: 1;
+            min-width: 0;
         }
 
         .detail-meta-title {
@@ -1311,8 +1321,17 @@
 
             .detail-header {
                 flex-direction: column;
-                align-items: flex-start;
+                align-items: center;
+                text-align: center;
                 gap: 16px;
+            }
+
+            .detail-header-info {
+                width: 100%;
+            }
+
+            .detail-meta-subtitle {
+                justify-content: center;
             }
 
             .detail-actions {
@@ -2191,9 +2210,9 @@
             const defaultTitle = `NewScriber ${langName} - Episode #${ep.episode_number || 0}`;
 
             detailPanel.innerHTML = `
-                <div class="detail-header" style="display: flex; gap: 16px; align-items: center;">
+                <div class="detail-header">
                     ${coverImgHTML}
-                    <div style="flex-grow: 1; min-width: 0;">
+                    <div class="detail-header-info">
                         <h1 class="detail-meta-title" style="margin: 0 0 4px 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${ep.title || defaultTitle}</h1>
                         <div class="detail-meta-subtitle">
                             <span>Drop ID: #${ep.id}</span>
