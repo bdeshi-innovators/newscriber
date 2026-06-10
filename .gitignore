@@ -11,3 +11,16 @@ newscribe.pem
 /artifacts/
 .agent/
 .claude/
+
+# Developer diagnostic and query scripts
+/scripts/inspect_*
+/scripts/check_*
+/scripts/db_*
+/scripts/test_*
+/scripts/find_n8n_key.sh
+/scripts/list_tables.py
+/scripts/parse_n8n_log.py
+/scripts/prune_dupe_episodes.sh
+/scripts/run_and_watch.sh
+/scripts/trigger_all_regions.sh
+/scripts/*.log
