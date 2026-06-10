@@ -184,24 +184,27 @@ def main():
             try:
                 font_title = ImageFont.truetype(p, 64)
                 break
-            except Exception:
-                pass
+            except (OSError, IOError):
+                # Ignore unreadable/invalid font files and try the next candidate path
+                continue
     
     for p in font_paths_sans_bold:
         if os.path.exists(p):
             try:
                 font_subtitle = ImageFont.truetype(p, 26)
                 break
-            except Exception:
-                pass
+            except (OSError, IOError):
+                # Ignore unreadable/invalid font files and try the next candidate path
+                continue
 
     for p in font_paths_sans:
         if os.path.exists(p):
             try:
                 font_tagline = ImageFont.truetype(p, 20)
                 break
-            except Exception:
-                pass
+            except (OSError, IOError):
+                # Ignore unreadable/invalid font files and try the next candidate path
+                continue
 
     if font_title is None: font_title = ImageFont.load_default()
     if font_subtitle is None: font_subtitle = ImageFont.load_default()
