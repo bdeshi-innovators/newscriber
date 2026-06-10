@@ -99,6 +99,7 @@ return fmt.Errorf("init tts client: %w", err)
 	mux.HandleFunc("/favicon.ico", handler.HandleFavicon)
 	mux.HandleFunc("/favicon.png", handler.HandleFaviconPNG)
 	mux.HandleFunc("/favicon.svg", handler.HandleFaviconSVG)
+	mux.HandleFunc("/og-image.png", handler.HandleOGImage)
 	mux.HandleFunc("/rss/generate", func(w http.ResponseWriter, r *http.Request) {
 		for _, lang := range []string{"en", "it", "fr", "bn", "global"} {
 			if err := handler.UpdateRSSFeed(r.Context(), lang); err != nil {

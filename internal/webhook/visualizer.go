@@ -22,6 +22,9 @@ var faviconPNG []byte
 //go:embed favicon.svg
 var faviconSVG []byte
 
+//go:embed og-image.png
+var ogImagePNG []byte
+
 // HandleFavicon serves the embedded favicon.ico.
 func (h *Handler) HandleFavicon(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/x-icon")
@@ -44,6 +47,14 @@ func (h *Handler) HandleFaviconSVG(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Cache-Control", "public, max-age=86400")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(faviconSVG)
+}
+
+// HandleOGImage serves the embedded og-image.png.
+func (h *Handler) HandleOGImage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "image/png")
+	w.Header().Set("Cache-Control", "public, max-age=86400")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(ogImagePNG)
 }
 
 // HandleVisualizer serves the embedded high-fidelity HTML visualizer dashboard.
